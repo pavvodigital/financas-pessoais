@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.database import Base, get_db
+import app.database as _app_database
 
 TEST_DB = "sqlite:///:memory:"
 engine = create_engine(
@@ -16,6 +17,10 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Patch app.database.engine so test_seed.py picks up the in-memory engine
+_app_database.engine = engine
+_app_database.SessionLocal = TestingSession
 
 def override_get_db():
     db = TestingSession()
