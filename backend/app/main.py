@@ -6,6 +6,10 @@ from app.seed import seed_categories
 from app.routers import auth as auth_router
 from app.routers import upload as upload_router
 from app.routers import dashboard as dashboard_router
+from app.routers import transactions as tx_router
+from app.routers import categories as cat_router
+from app.routers import trends as trends_router
+from app.routers import plans as plans_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,6 +32,10 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(upload_router.router)
 app.include_router(dashboard_router.router)
+app.include_router(tx_router.router)
+app.include_router(cat_router.router)
+app.include_router(trends_router.router)
+app.include_router(plans_router.router)
 
 @app.get("/api/health")
 def health():
