@@ -5,6 +5,7 @@ from app.database import SessionLocal
 from app.seed import seed_categories
 from app.auth import verify_token
 from app.routers import auth as auth_router
+from app.routers import upload as upload_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router.router)
+app.include_router(upload_router.router)
 
 @app.get("/api/health")
 def health():
