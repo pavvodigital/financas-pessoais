@@ -75,7 +75,6 @@ ITAU_CATEGORY_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 MERCHANT_NORMALIZATIONS: list[tuple[re.Pattern, Any]] = [
     (re.compile(r"DL\s*\*\s*UberRides", re.I), "Uber"),
-    (re.compile(r"DL\s+\*\s*UberRides", re.I), "Uber"),
     (re.compile(r"Uber\s+UBER\s+\*TRIP", re.I), "Uber"),
     (re.compile(r"UBER\s*\*\s*TRIP", re.I), "Uber"),
     (re.compile(r"CPG\*(.+)", re.I), lambda m: m.group(1).strip()),
@@ -103,7 +102,10 @@ def _parse_amount(amount_str: str, has_minus: bool) -> float:
     Credits / refunds appear with an explicit leading '- '.
     We store expenses as negative values in our system.
     """
-    value = float(amount_str.replace(".", "").replace(",", "."))
+    try:
+        value = float(amount_str.replace(".", "").replace(",", "."))
+    except ValueError:
+        return 0.0
     if has_minus:
         # Credit / refund → positive in our system
         return value
@@ -111,11 +113,15 @@ def _parse_amount(amount_str: str, has_minus: bool) -> float:
     return -value
 
 
-def _resolve_year(month: int, statement_year: int) -> int:
-    """Handle January statements that include December transactions."""
-    # If the statement is in month M and the transaction month is > M+1,
-    # the transaction likely belongs to the previous year.
-    if month > (datetime.now().month + 1) % 12 + 1:
+def _resolve_year(month: int, statement_year: int, statement_month: int) -> int:
+    """Handle statements that include transactions from the prior month.
+
+    If the transaction month is more than 1 month ahead of the statement month
+    (modulo 12), the transaction belongs to the previous year.
+    For example: a December transaction (month=12) in a January statement
+    (statement_month=1) → 12 > 1 + 1 → prior year.
+    """
+    if month > statement_month + 1:
         return statement_year - 1
     return statement_year
 
@@ -151,13 +157,18 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
     transactions: list[dict[str, Any]] = []
 
     with pdfplumber.open(path) as pdf:
-        # --- 1. Detect statement year from the Vencimento field (page 0) ---
+        # --- 1. Detect statement year and month from the Vencimento field (page 0) ---
         statement_year: int = datetime.now().year
+        statement_month: int = datetime.now().month
         for page in pdf.pages:
             text = page.extract_text() or ""
             m = VENCIMENTO_RE.search(text)
             if m:
                 statement_year = int(m.group(1))
+                # Extract month from the full Vencimento date (DD/MM/YYYY)
+                venc_full = re.search(r"Vencimento:\s*\d{2}/(\d{2})/\d{4}", text)
+                if venc_full:
+                    statement_month = int(venc_full.group(1))
                 break
 
         # --- 2. Scan every page line by line ---
@@ -182,7 +193,7 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                     amount_raw = tx_match.group(4)
 
                     day, month = map(int, day_month.split("/"))
-                    year = _resolve_year(month, statement_year)
+                    year = _resolve_year(month, statement_year, statement_month)
                     try:
                         tx_date = date(year, month, day)
                     except ValueError:
@@ -191,11 +202,13 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
 
                     # --- Look for category on the next line ---
                     itau_cat: str | None = None
+                    consumed_category = False
                     if i + 1 < len(lines):
                         next_line = lines[i + 1].strip()
                         cat_match = CAT_LINE.match(next_line)
                         if cat_match:
                             itau_cat = _match_category(cat_match.group(1))
+                            consumed_category = True
 
                     transactions.append(
                         {
@@ -208,6 +221,11 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                             "raw_text": line,
                         }
                     )
+
+                    # Skip the category line if it was consumed
+                    if consumed_category:
+                        i += 2
+                        continue
 
                 i += 1
 
