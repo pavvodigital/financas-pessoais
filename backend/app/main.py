@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import SessionLocal
 from app.seed import seed_categories
-from app.auth import verify_token
 from app.routers import auth as auth_router
 from app.routers import upload as upload_router
+from app.routers import dashboard as dashboard_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,11 +27,8 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(upload_router.router)
+app.include_router(dashboard_router.router)
 
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
-
-@app.get("/api/dashboard", dependencies=[Depends(verify_token)])
-def dashboard_placeholder():
-    return {"message": "ok"}
