@@ -139,8 +139,78 @@ def _match_category(raw_cat: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# Bank statement (extrato) patterns
+# ---------------------------------------------------------------------------
+
+# Each extrato line:
+#   DD/MM/YYYY  DESCRIPTION  [-]AMOUNT
+# Examples:
+#   15/05/2026 ITAU MC 4528-8298 -6.864,26
+#   30/04/2026 REMUNERACAO/SALARIO 4.613,99
+#   08/05/2026 PIX QRS KARINE GARC08/05 -15,00
+STMT_LINE = re.compile(
+    r"^(\d{2}/\d{2}/\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})$"
+)
+
+# Lines to skip in the extrato
+STMT_SKIP_RE = re.compile(r"SALDO DO DIA", re.IGNORECASE)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+def parse_statement_pdf(path: str) -> list[dict[str, Any]]:
+    """Parse an Itaú bank statement (extrato) PDF and return a list of transactions.
+
+    Each transaction dict contains:
+        date          : datetime.date
+        description   : str   (raw description from PDF)
+        merchant_name : str   (normalised merchant/description)
+        amount        : float (negative = debit/expense, positive = credit/income)
+        itau_category : None  (not available in extrato)
+        source        : "bank"
+        raw_text      : str   (original line from PDF)
+    """
+    transactions: list[dict[str, Any]] = []
+
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                m = STMT_LINE.match(line)
+                if not m:
+                    continue
+                date_str, desc, amount_raw = m.group(1), m.group(2).strip(), m.group(3)
+                # Skip balance summary lines
+                if STMT_SKIP_RE.search(desc):
+                    continue
+                day, month, year = map(int, date_str.split("/"))
+                try:
+                    tx_date = date(year, month, day)
+                except ValueError:
+                    continue
+                try:
+                    amount = float(amount_raw.replace(".", "").replace(",", "."))
+                except ValueError:
+                    continue
+                transactions.append(
+                    {
+                        "date": tx_date,
+                        "description": desc,
+                        "merchant_name": _normalize_merchant(desc),
+                        "amount": amount,
+                        "itau_category": None,
+                        "source": "bank",
+                        "raw_text": line,
+                    }
+                )
+
+    return transactions
+
 
 def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
     """Parse an Itaú credit card statement PDF and return a list of transactions.
