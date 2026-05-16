@@ -60,3 +60,15 @@ def test_upload_confirm_saves_transactions(client):
     )
     assert resp.status_code == 200
     assert resp.json()["saved"] > 0
+
+
+def test_upload_requires_auth(client):
+    import os
+    FATURA = os.path.join(os.path.dirname(__file__), "fixtures/fatura_sample.pdf")
+    with open(FATURA, "rb") as f:
+        resp = client.post(
+            "/api/upload",
+            files={"file": ("fatura.pdf", f, "application/pdf")},
+            data={"person": "diogo"},
+        )
+    assert resp.status_code == 401

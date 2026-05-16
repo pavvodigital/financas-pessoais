@@ -12,7 +12,7 @@ from app.schemas.transaction import (
     TransactionPreview,
     UploadConfirmRequest,
 )
-from app.models import Transaction, UploadedFile, Category
+from app.models import Transaction, UploadedFile
 
 router = APIRouter(
     prefix="/api/upload",
@@ -76,6 +76,11 @@ async def upload_pdf(
 @router.post("/confirm")
 def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
     from datetime import datetime
+    from fastapi import HTTPException
+
+    if req.file_id_temp not in _temp_store:
+        raise HTTPException(status_code=422, detail="file_id_temp inválido ou expirado")
+    _temp_store.pop(req.file_id_temp)
 
     dates = [t.date for t in req.transactions]
     month = dates[0].month if dates else datetime.now().month
@@ -91,16 +96,6 @@ def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
     )
     db.add(uploaded)
     db.flush()
-
-    cat_cache: dict[str, str | None] = {}
-
-    def get_cat_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        if name not in cat_cache:
-            cat = db.query(Category).filter(Category.name == name).first()
-            cat_cache[name] = cat.id if cat else None
-        return cat_cache[name]
 
     for tx in req.transactions:
         t = Transaction(
