@@ -146,10 +146,16 @@ def _group_words_into_lines(words: list[dict], page_width: float) -> list[str]:
     lo, hi = page_width * 0.30, page_width * 0.80
     central_x0 = sorted({round(w["x0"]) for w in words if lo <= w["x0"] <= hi})
     if len(central_x0) >= 2:
-        gaps = [(central_x0[i + 1] - central_x0[i], central_x0[i], central_x0[i + 1])
-                for i in range(len(central_x0) - 1)]
-        _, gap_lo, gap_hi = max(gaps)
-        mid = (gap_lo + gap_hi) / 2
+        gaps = [
+            (central_x0[i + 1] - central_x0[i], central_x0[i], central_x0[i + 1])
+            for i in range(len(central_x0) - 1)
+            if central_x0[i + 1] - central_x0[i] > 20
+        ]
+        if gaps:
+            _, gap_lo, gap_hi = max(gaps)
+            mid = (gap_lo + gap_hi) / 2
+        else:
+            mid = page_width / 2
     else:
         mid = page_width / 2
 
