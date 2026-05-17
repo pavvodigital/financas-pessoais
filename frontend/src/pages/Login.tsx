@@ -19,18 +19,18 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f0f1a]">
-      <form onSubmit={handleSubmit} className="bg-[#1a1a2e] p-8 rounded-xl w-80 space-y-4">
-        <h1 className="text-2xl font-bold text-[#7c6af7]">Financas</h1>
+    <div className="min-h-screen flex items-center justify-center bg-[#0f172a]">
+      <form onSubmit={handleSubmit} className="bg-[#1e293b] p-8 rounded-xl w-80 space-y-4">
+        <h1 className="text-2xl font-bold text-[#38bdf8]">Finanças</h1>
         <input
           type="password"
           placeholder="Senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-[#0f0f1a] border border-[#333] rounded-lg px-4 py-2 text-white"
+          className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-4 py-2 text-white"
         />
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-        <button type="submit" className="w-full bg-[#7c6af7] text-white rounded-lg py-2 font-semibold">
+        {error && <p className="text-[#fb923c] text-sm">{error}</p>}
+        <button type="submit" className="w-full bg-sky-500 text-white rounded-lg py-2 font-semibold">
           Entrar
         </button>
       </form>

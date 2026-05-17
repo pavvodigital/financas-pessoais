@@ -2,13 +2,16 @@ import { useEffect, useState } from "react";
 import api from "../api/client";
 import type { Transaction, Category } from "../types";
 import { usePersonStore } from "../store/person";
+import { useFilterStore } from "../store/filter";
 
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
 export default function Transactions() {
   const { person } = usePersonStore();
+  const { categoryId: initialCategoryId } = useFilterStore();
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategoryId);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year] = useState(new Date().getFullYear());
 
@@ -45,7 +48,7 @@ export default function Transactions() {
         <select
           value={month}
           onChange={(e) => setMonth(Number(e.target.value))}
-          className="bg-[#1a1a2e] border border-[#333] rounded px-3 py-1.5 text-sm"
+          className="bg-[#1e293b] border border-[#334155] rounded px-3 py-1.5 text-sm"
         >
           {MONTHS.map((m, i) => (
             <option key={i} value={i + 1}>
@@ -53,11 +56,21 @@ export default function Transactions() {
             </option>
           ))}
         </select>
+        <select
+          value={selectedCategory ?? ""}
+          onChange={(e) => setSelectedCategory(e.target.value || null)}
+          className="bg-[#1e293b] border border-[#334155] rounded px-3 py-1.5 text-sm"
+        >
+          <option value="">Todas categorias</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
-      <div className="bg-[#1a1a2e] rounded-xl overflow-hidden">
+      <div className="bg-[#1e293b] rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-400 text-left border-b border-[#333]">
+            <tr className="text-gray-400 text-left border-b border-[#334155]">
               <th className="px-4 py-3">Data</th>
               <th className="px-4 py-3">Descrição</th>
               <th className="px-4 py-3">Pessoa</th>
@@ -66,8 +79,8 @@ export default function Transactions() {
             </tr>
           </thead>
           <tbody>
-            {txs.map((tx) => (
-              <tr key={tx.id} className="border-b border-[#222] hover:bg-[#252540]">
+            {txs.filter((tx) => !selectedCategory || tx.category_id === selectedCategory).map((tx) => (
+              <tr key={tx.id} className="border-b border-[#222] hover:bg-[#334155]">
                 <td className="px-4 py-2 text-gray-400">{tx.date}</td>
                 <td className="px-4 py-2">{tx.merchant_name || tx.description}</td>
                 <td className="px-4 py-2 capitalize text-gray-400">{tx.person}</td>
@@ -75,7 +88,7 @@ export default function Transactions() {
                   <select
                     value={tx.category_id || ""}
                     onChange={(e) => updateCategory(tx.id, e.target.value)}
-                    className="bg-[#0f0f1a] border border-[#333] rounded px-2 py-1 text-xs"
+                    className="bg-[#0f172a] border border-[#334155] rounded px-2 py-1 text-xs"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -86,7 +99,7 @@ export default function Transactions() {
                 </td>
                 <td
                   className={`px-4 py-2 text-right font-medium ${
-                    tx.amount < 0 ? "text-red-400" : "text-green-400"
+                    tx.amount < 0 ? "text-[#fb923c]" : "text-[#4ade80]"
                   }`}
                 >
                   R${" "}

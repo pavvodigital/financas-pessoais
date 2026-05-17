@@ -4,17 +4,17 @@ import PersonFilter from "./PersonFilter";
 const navItems = [
   { to: "/dashboard", icon: "📊", label: "Dashboard" },
   { to: "/import", icon: "📥", label: "Importar" },
-  { to: "/transactions", icon: "💳", label: "Transacoes" },
+  { to: "/transactions", icon: "💳", label: "Transações" },
   { to: "/categories", icon: "🏷️", label: "Categorias" },
   { to: "/plans", icon: "🎯", label: "Planos" },
-  { to: "/trends", icon: "📈", label: "Tendencias" },
+  { to: "/trends", icon: "📈", label: "Tendências" },
 ];
 
 export default function Sidebar() {
   return (
-    <div className="flex h-screen bg-[#0f0f1a]">
-      <aside className="w-52 bg-[#1a1a2e] flex flex-col py-4 gap-2 shrink-0">
-        <div className="px-4 pb-2 text-[#7c6af7] font-bold text-lg">Financas</div>
+    <div className="flex h-screen bg-[#0f172a]">
+      <aside className="w-52 bg-[#1e293b] border-r border-[#334155] flex flex-col py-4 gap-2 shrink-0">
+        <div className="px-4 pb-2 text-[#38bdf8] font-bold text-lg">Finanças</div>
         <nav className="flex-1 flex flex-col gap-1 px-2">
           {navItems.map((item) => (
             <NavLink
@@ -22,7 +22,9 @@ export default function Sidebar() {
               to={item.to}
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive ? "bg-[#7c6af7] text-white" : "text-gray-400 hover:text-white hover:bg-[#252540]"
+                  isActive
+                    ? "bg-sky-500 text-white"
+                    : "text-[#94a3b8] hover:text-white hover:bg-[#334155]"
                 }`
               }
             >
@@ -31,8 +33,8 @@ export default function Sidebar() {
             </NavLink>
           ))}
         </nav>
-        <div className="border-t border-[#333] pt-3">
-          <p className="px-4 text-xs text-gray-500 mb-2">Visualizar</p>
+        <div className="border-t border-[#334155] pt-3">
+          <p className="px-4 text-xs text-[#475569] mb-2">Visualizar</p>
           <PersonFilter />
         </div>
       </aside>

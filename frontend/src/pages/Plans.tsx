@@ -39,10 +39,10 @@ export default function Plans() {
         <p className="text-gray-400">Nenhum plano criado ainda.</p>
       )}
       {statuses.map((plan) => (
-        <div key={plan.plan_id} className="bg-[#1a1a2e] rounded-xl p-5 space-y-4">
+        <div key={plan.plan_id} className="bg-[#1e293b] rounded-xl p-5 space-y-4">
           <div className="flex justify-between">
             <div>
-              <h2 className="font-bold text-lg text-[#7c6af7]">{plan.name}</h2>
+              <h2 className="font-bold text-lg text-[#38bdf8]">{plan.name}</h2>
               <p className="text-gray-400 text-sm">
                 Meta: R$ {plan.goal_amount.toLocaleString("pt-BR")} ·{" "}
                 {plan.months_remaining} meses restantes
@@ -54,7 +54,7 @@ export default function Plans() {
               <div key={b.category_id}>
                 <div className="flex justify-between text-sm mb-1">
                   <span>{b.category_name}</span>
-                  <span className={b.over_budget ? "text-red-400" : "text-gray-400"}>
+                  <span className={b.over_budget ? "text-[#fb923c]" : "text-gray-400"}>
                     R${" "}
                     {b.spent_this_month.toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
@@ -66,7 +66,7 @@ export default function Plans() {
                     {b.over_budget && " ⚠️"}
                   </span>
                 </div>
-                <div className="bg-[#0f0f1a] rounded-full h-3 overflow-hidden">
+                <div className="bg-[#0f172a] rounded-full h-3 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
