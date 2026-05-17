@@ -34,5 +34,7 @@ class Transaction(Base):
     merchant_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     raw_text: Mapped[str | None] = mapped_column(String(500), nullable=True)
     manually_categorized: Mapped[bool] = mapped_column(Boolean, default=False)
+    installment_current: Mapped[int | None] = mapped_column(nullable=True)
+    installment_total: Mapped[int | None] = mapped_column(nullable=True)
     category: Mapped["Category | None"] = relationship(back_populates="transactions")
     file: Mapped["UploadedFile | None"] = relationship(back_populates="transactions")
