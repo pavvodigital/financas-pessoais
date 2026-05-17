@@ -117,6 +117,7 @@ async def upload_pdf(
                 raw_text=tx.get("raw_text"),
                 installment_current=tx.get("installment_current"),
                 installment_total=tx.get("installment_total"),
+                original_purchase_date=tx.get("original_purchase_date"),
             )
         )
 
@@ -173,6 +174,7 @@ def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
             raw_text=tx.raw_text,
             installment_current=tx.installment_current,
             installment_total=tx.installment_total,
+            original_purchase_date=tx.original_purchase_date,
         )
         db.add(t)
 

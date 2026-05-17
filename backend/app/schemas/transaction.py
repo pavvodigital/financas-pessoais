@@ -13,6 +13,7 @@ class TransactionPreview(BaseModel):
     raw_text: Optional[str] = None
     installment_current: Optional[int] = None
     installment_total: Optional[int] = None
+    original_purchase_date: Optional[date] = None
 
 
 class TransactionIn(BaseModel):
@@ -25,6 +26,7 @@ class TransactionIn(BaseModel):
     raw_text: Optional[str] = None
     installment_current: Optional[int] = None
     installment_total: Optional[int] = None
+    original_purchase_date: Optional[date] = None
 
 
 class UploadPreviewResponse(BaseModel):
