@@ -34,8 +34,20 @@ def _detect_type(filename: str) -> str:
 
 def _detect_bank(filename: str, content: bytes) -> str:
     name = filename.lower()
-    if b"Banco Ita" in content or b"itaucard" in content or "itau" in name or "fatura" in name:
+    if "itau" in name:
         return "itau"
+    # PDFs use compressed streams — parse page text for reliable markers
+    import io
+    import pdfplumber
+    try:
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            if pdf.pages:
+                text = pdf.pages[0].extract_text() or ""
+                # "Vencimento:" is present on every Itaú fatura page header
+                if "Vencimento:" in text:
+                    return "itau"
+    except Exception:
+        pass
     return "unknown"
 
 
