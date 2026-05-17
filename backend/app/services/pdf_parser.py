@@ -196,6 +196,7 @@ STMT_LINE = re.compile(
 STMT_SKIP_RE = re.compile(
     r"SALDO DO DIA"
     r"|PAGAMENTO\s+FATURA"
+    r"|FATURA\s+PAGA"
     r"|PAG\s+FATURA"
     r"|PAG\s+ITAUCARD"
     r"|DEBITO\s+AUT\s+CARTAO"
