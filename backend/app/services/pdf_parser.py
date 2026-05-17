@@ -138,6 +138,38 @@ def _match_category(raw_cat: str) -> str | None:
     return None
 
 
+def _group_words_into_lines(words: list[dict], page_width: float) -> list[str]:
+    # Find the column split point by locating the largest x0 gap in the central
+    # band of the page (between 30% and 80% of page width).  This handles Itaú
+    # faturas where left-column amounts sit at ~321pt and right-column dates
+    # start at ~365pt on a 595pt page — well beyond page.width/2 (297.5).
+    lo, hi = page_width * 0.30, page_width * 0.80
+    central_x0 = sorted({round(w["x0"]) for w in words if lo <= w["x0"] <= hi})
+    if len(central_x0) >= 2:
+        gaps = [(central_x0[i + 1] - central_x0[i], central_x0[i], central_x0[i + 1])
+                for i in range(len(central_x0) - 1)]
+        _, gap_lo, gap_hi = max(gaps)
+        mid = (gap_lo + gap_hi) / 2
+    else:
+        mid = page_width / 2
+
+    left  = [w for w in words if w["x0"] < mid]
+    right = [w for w in words if w["x0"] >= mid]
+
+    def to_lines(col_words: list[dict]) -> list[str]:
+        rows: dict[int, list[dict]] = {}
+        for w in col_words:
+            key = round(w["top"] / 3)
+            rows.setdefault(key, []).append(w)
+        lines = []
+        for key in sorted(rows):
+            row_words = sorted(rows[key], key=lambda w: w["x0"])
+            lines.append(" ".join(w["text"] for w in row_words))
+        return lines
+
+    return to_lines(left) + to_lines(right)
+
+
 # ---------------------------------------------------------------------------
 # Bank statement (extrato) patterns
 # ---------------------------------------------------------------------------
@@ -253,14 +285,13 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
 
         # --- 2. Scan every page line by line ---
         for page in pdf.pages:
-            text = page.extract_text() or ""
-            lines = text.splitlines()
+            words = page.extract_words(keep_blank_chars=False, extra_attrs=["top"])
+            lines = _group_words_into_lines(words, page.width)
 
             i = 0
             while i < len(lines):
                 line = lines[i].strip()
 
-                # Skip known non-transaction lines quickly
                 if not line or SKIP_LINE_RE.match(line):
                     i += 1
                     continue
@@ -272,6 +303,14 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                     has_minus = bool(tx_match.group(3))
                     amount_raw = tx_match.group(4)
 
+                    inst_current: int | None = None
+                    inst_total: int | None = None
+                    inst_match = re.search(r"\s+(\d{1,2})/(\d{1,2})$", description)
+                    if inst_match:
+                        inst_current = int(inst_match.group(1))
+                        inst_total = int(inst_match.group(2))
+                        description = description[:inst_match.start()].strip()
+
                     day, month = map(int, day_month.split("/"))
                     year = _resolve_year(month, statement_year, statement_month)
                     try:
@@ -280,7 +319,6 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                         i += 1
                         continue
 
-                    # --- Look for category on the next line ---
                     itau_cat: str | None = None
                     consumed_category = False
                     if i + 1 < len(lines):
@@ -290,19 +328,18 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                             itau_cat = _match_category(cat_match.group(1))
                             consumed_category = True
 
-                    transactions.append(
-                        {
-                            "date": tx_date,
-                            "description": description,
-                            "merchant_name": _normalize_merchant(description),
-                            "amount": _parse_amount(amount_raw, has_minus),
-                            "itau_category": itau_cat,
-                            "source": "credit_card",
-                            "raw_text": line,
-                        }
-                    )
+                    transactions.append({
+                        "date": tx_date,
+                        "description": description,
+                        "merchant_name": _normalize_merchant(description),
+                        "amount": _parse_amount(amount_raw, has_minus),
+                        "itau_category": itau_cat,
+                        "source": "credit_card",
+                        "raw_text": line,
+                        "installment_current": inst_current,
+                        "installment_total": inst_total,
+                    })
 
-                    # Skip the category line if it was consumed
                     if consumed_category:
                         i += 2
                         continue
