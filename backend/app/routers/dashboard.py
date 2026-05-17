@@ -14,6 +14,7 @@ def get_dashboard(
     month: int = Query(default=None),
     year: int = Query(default=None),
     person: str = Query(default=None),
+    category_id: str = Query(default=None),
     db: Session = Depends(get_db),
 ):
     now = datetime.now()
@@ -80,10 +81,15 @@ def get_dashboard(
             total_income=round(sum(float(t.amount) for t in ht if t.amount > 0), 2),
         ))
 
+    recent_q = sorted(txs, key=lambda x: x.date, reverse=True)
+    if category_id:
+        recent_q = [t for t in recent_q if t.category_id == category_id]
     recent = [{
         "id": t.id, "date": str(t.date), "description": t.description,
+        "merchant_name": t.merchant_name,
         "amount": float(t.amount), "person": t.person,
-    } for t in sorted(txs, key=lambda x: x.date, reverse=True)[:10]]
+        "category_id": t.category_id,
+    } for t in recent_q[:20]]
 
     return DashboardResponse(
         month=month, year=year,
@@ -95,3 +101,37 @@ def get_dashboard(
         monthly_history=history,
         recent_transactions=recent,
     )
+
+
+@router.get("/balance-history")
+def balance_history(person: str = Query(default="ambos"), db: Session = Depends(get_db)):
+    from datetime import date as date_type
+    today = date_type.today()
+    months = []
+    for i in range(11, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        months.append((y, m))
+
+    cumulative = 0.0
+    result = []
+    for y, m in months:
+        q = db.query(Transaction).filter(
+            func.extract("month", Transaction.date) == m,
+            func.extract("year", Transaction.date) == y,
+        )
+        if person != "ambos":
+            q = q.filter(Transaction.person == person)
+        txs = q.all()
+        income = round(sum(float(t.amount) for t in txs if t.amount > 0), 2)
+        expense = round(abs(sum(float(t.amount) for t in txs if t.amount < 0)), 2)
+        balance = round(income - expense, 2)
+        cumulative = round(cumulative + balance, 2)
+        result.append({
+            "year": y, "month": m, "income": income,
+            "expense": expense, "balance": balance, "cumulative": cumulative,
+        })
+    return result
