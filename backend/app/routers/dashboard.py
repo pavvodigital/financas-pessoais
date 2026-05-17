@@ -54,6 +54,8 @@ def get_dashboard(
     )
     if person and person != "ambos":
         prev_q = prev_q.filter(Transaction.person == person)
+    if source:
+        prev_q = prev_q.filter(Transaction.source == source)
     prev_txs = prev_q.all()
     prev_expense = abs(sum(float(t.amount) for t in prev_txs if t.amount < 0))
     vs_last = ((total_expense - prev_expense) / prev_expense * 100) if prev_expense else None
@@ -76,7 +78,7 @@ def get_dashboard(
                 percentage=round(total / total_expense * 100, 1) if total_expense else 0,
             ))
 
-    # Monthly history (last 6 months)
+    # Monthly history (last 6 months) — apply same person/source filters
     history = []
     for i in range(5, -1, -1):
         m = month - i
@@ -84,10 +86,15 @@ def get_dashboard(
         while m <= 0:
             m += 12
             y -= 1
-        ht = db.query(Transaction).filter(
+        hq = db.query(Transaction).filter(
             func.extract("month", Transaction.date) == m,
             func.extract("year", Transaction.date) == y,
-        ).all()
+        )
+        if person and person != "ambos":
+            hq = hq.filter(Transaction.person == person)
+        if source:
+            hq = hq.filter(Transaction.source == source)
+        ht = hq.all()
         history.append(MonthlyTotal(
             year=y, month=m,
             total_expense=round(abs(sum(float(t.amount) for t in ht if t.amount < 0)), 2),
