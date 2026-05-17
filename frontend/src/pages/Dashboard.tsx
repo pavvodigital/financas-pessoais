@@ -22,7 +22,6 @@ export default function Dashboard() {
   const { person } = usePersonStore();
   const { month, year, categoryId, source, setMonth, setCategory } = useFilterStore();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [prevData, setPrevData] = useState<DashboardData | null>(null);
   const [balanceHistory, setBalanceHistory] = useState<BalancePoint[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -35,15 +34,6 @@ export default function Dashboard() {
     if (categoryId) params.set("category_id", categoryId);
     if (source) params.set("source", source);
     api.get<DashboardData>(`/dashboard?${params}`).then((r) => setData(r.data));
-
-    const prevMonth = month === 1 ? 12 : month - 1;
-    const prevYear = month === 1 ? year - 1 : year;
-    const prevParams = new URLSearchParams({
-      month: String(prevMonth),
-      year: String(prevYear),
-      person,
-    });
-    api.get<DashboardData>(`/dashboard?${prevParams}`).then((r) => setPrevData(r.data));
   }, [person, month, year, categoryId, source]);
 
   useEffect(() => {
@@ -51,13 +41,6 @@ export default function Dashboard() {
       .get<BalancePoint[]>(`/dashboard/balance-history?person=${person}`)
       .then((r) => setBalanceHistory(r.data));
   }, [person]);
-
-  const vsLastMonthPct =
-    prevData && prevData.total_expense > 0
-      ? Math.round(
-          (((data?.total_expense ?? 0) - prevData.total_expense) / prevData.total_expense) * 100,
-        )
-      : null;
 
   if (!data) return <div className="text-[#475569] p-6">Carregando...</div>;
 
@@ -68,7 +51,7 @@ export default function Dashboard() {
         totalExpense={data.total_expense}
         totalIncome={data.total_income}
         balance={data.balance}
-        vsLastMonthPct={vsLastMonthPct}
+        vsLastMonthPct={data.vs_last_month_pct}
       />
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2">
