@@ -138,6 +138,21 @@ def _match_category(raw_cat: str) -> str | None:
     return None
 
 
+def _original_purchase_date(tx_date: date, installment_current: int) -> date:
+    """Calculate original purchase date from installment number.
+
+    installment 4/12 in Jan 2026 → purchase was Oct 2025 (3 months back).
+    Uses stdlib calendar to clamp day (e.g. Mar 31 - 1 month → Feb 28).
+    """
+    import calendar
+    months_back = installment_current - 1
+    m = tx_date.month - months_back
+    y = tx_date.year + (m - 1) // 12
+    m = ((m - 1) % 12) + 1
+    last_day = calendar.monthrange(y, m)[1]
+    return date(y, m, min(tx_date.day, last_day))
+
+
 def _group_words_into_lines(words: list[dict], page_width: float) -> list[str]:
     # Find the column split point by locating the largest x0 gap in the central
     # band of the page (between 30% and 80% of page width).  This handles Itaú
@@ -325,6 +340,9 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                         i += 1
                         continue
 
+                    # Calculate original purchase date for installment transactions
+                    orig_date = _original_purchase_date(tx_date, inst_current) if inst_current else None
+
                     itau_cat: str | None = None
                     consumed_category = False
                     if i + 1 < len(lines):
@@ -344,6 +362,7 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                         "raw_text": line,
                         "installment_current": inst_current,
                         "installment_total": inst_total,
+                        "original_purchase_date": orig_date,
                     })
 
                     if consumed_category:
