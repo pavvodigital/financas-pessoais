@@ -37,7 +37,7 @@ export default function CategoryPieChart({ data, selectedCategoryId, onCategoryC
             cy="50%"
             outerRadius={80}
             style={{ cursor: "pointer" }}
-            onClick={(entry: CategoryItem) => handleClick(entry)}
+            onClick={(entry) => handleClick(entry as unknown as CategoryItem)}
           >
             {data.map((entry, i) => (
               <Cell

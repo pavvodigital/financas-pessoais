@@ -40,7 +40,7 @@ export default function MonthlyBarChart({ data, selectedMonth, selectedYear, onM
           <Bar
             dataKey="Gastos"
             radius={[3, 3, 0, 0]}
-            onClick={(d) => handleClick(d as { month: number; year: number })}
+            onClick={(d) => handleClick(d as unknown as { month: number; year: number })}
           >
             {chartData.map((entry, i) => (
               <Cell
@@ -62,7 +62,7 @@ export default function MonthlyBarChart({ data, selectedMonth, selectedYear, onM
           <Bar
             dataKey="Renda"
             radius={[3, 3, 0, 0]}
-            onClick={(d) => handleClick(d as { month: number; year: number })}
+            onClick={(d) => handleClick(d as unknown as { month: number; year: number })}
           >
             {chartData.map((entry, i) => (
               <Cell

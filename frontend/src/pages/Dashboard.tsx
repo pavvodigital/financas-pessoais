@@ -1,54 +1,105 @@
 import { useEffect, useState } from "react";
-import type { DashboardData } from "../types";
+import type { DashboardData, Category } from "../types";
 import api from "../api/client";
 import { usePersonStore } from "../store/person";
-import SummaryCards from "../components/Dashboard/SummaryCards";
+import { useFilterStore } from "../store/filter";
+import FilterBar from "../components/Dashboard/FilterBar";
+import KpiCards from "../components/Dashboard/KpiCards";
 import CategoryPieChart from "../components/Dashboard/CategoryPieChart";
 import MonthlyBarChart from "../components/Dashboard/MonthlyBarChart";
+import BalanceHistoryChart from "../components/Dashboard/BalanceHistoryChart";
+
+interface BalancePoint {
+  year: number;
+  month: number;
+  income: number;
+  expense: number;
+  balance: number;
+  cumulative: number;
+}
 
 export default function Dashboard() {
   const { person } = usePersonStore();
+  const { month, year, categoryId, setMonth, setCategory } = useFilterStore();
   const [data, setData] = useState<DashboardData | null>(null);
-  const now = new Date();
-  const [month] = useState(now.getMonth() + 1);
-  const [year] = useState(now.getFullYear());
+  const [prevData, setPrevData] = useState<DashboardData | null>(null);
+  const [balanceHistory, setBalanceHistory] = useState<BalancePoint[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    api.get<Category[]>("/categories").then((r) => setCategories(r.data));
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ month: String(month), year: String(year), person });
+    if (categoryId) params.set("category_id", categoryId);
+    api.get<DashboardData>(`/dashboard?${params}`).then((r) => setData(r.data));
+
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevParams = new URLSearchParams({
+      month: String(prevMonth),
+      year: String(prevYear),
+      person,
+    });
+    api.get<DashboardData>(`/dashboard?${prevParams}`).then((r) => setPrevData(r.data));
+  }, [person, month, year, categoryId]);
 
   useEffect(() => {
     api
-      .get<DashboardData>(`/dashboard?month=${month}&year=${year}&person=${person}`)
-      .then((r) => setData(r.data));
-  }, [person, month, year]);
+      .get<BalancePoint[]>(`/dashboard/balance-history?person=${person}`)
+      .then((r) => setBalanceHistory(r.data));
+  }, [person]);
 
-  if (!data) return <div className="text-gray-400">Carregando...</div>;
+  const vsLastMonthPct =
+    prevData && prevData.total_expense > 0
+      ? Math.round(
+          (((data?.total_expense ?? 0) - prevData.total_expense) / prevData.total_expense) * 100,
+        )
+      : null;
+
+  if (!data) return <div className="text-[#475569] p-6">Carregando...</div>;
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">
-        Dashboard — {month}/{year}
-      </h1>
-      <SummaryCards
+    <div className="space-y-5">
+      <FilterBar categories={categories} />
+      <KpiCards
         totalExpense={data.total_expense}
         totalIncome={data.total_income}
         balance={data.balance}
-        vsLastMonth={data.vs_last_month_pct}
+        vsLastMonthPct={vsLastMonthPct}
       />
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <CategoryPieChart data={data.by_category} />
-        <MonthlyBarChart data={data.monthly_history} />
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2">
+          <MonthlyBarChart
+            data={data.monthly_history}
+            selectedMonth={month}
+            selectedYear={year}
+            onMonthClick={setMonth}
+          />
+        </div>
+        <CategoryPieChart
+          data={data.by_category}
+          selectedCategoryId={categoryId}
+          onCategoryClick={setCategory}
+        />
       </div>
-      <div className="bg-[#1a1a2e] rounded-xl p-4">
-        <h3 className="text-sm text-gray-400 mb-3">Últimas transações</h3>
+      <BalanceHistoryChart data={balanceHistory} />
+      <div className="bg-[#1e293b] rounded-xl p-4">
+        <h3 className="text-sm text-[#94a3b8] mb-3">
+          Últimas transações{categoryId ? " · filtrado por categoria" : ""}
+        </h3>
         <div className="space-y-2">
           {data.recent_transactions.map((t) => (
-            <div key={t.id} className="flex justify-between text-sm">
-              <span className="text-gray-300">
+            <div
+              key={t.id}
+              className="flex justify-between text-sm py-1 border-b border-[#334155] last:border-0"
+            >
+              <span className="text-[#94a3b8]">
                 {t.date} · {t.description}
               </span>
-              <span className={t.amount < 0 ? "text-red-400" : "text-green-400"}>
-                R${" "}
-                {Math.abs(t.amount).toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                })}
+              <span className={t.amount < 0 ? "text-[#fb923c]" : "text-[#4ade80]"}>
+                R$ {Math.abs(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </span>
             </div>
           ))}
