@@ -36,5 +36,6 @@ class Transaction(Base):
     manually_categorized: Mapped[bool] = mapped_column(Boolean, default=False)
     installment_current: Mapped[int | None] = mapped_column(nullable=True)
     installment_total: Mapped[int | None] = mapped_column(nullable=True)
+    original_purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     category: Mapped["Category | None"] = relationship(back_populates="transactions")
     file: Mapped["UploadedFile | None"] = relationship(back_populates="transactions")

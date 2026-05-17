@@ -16,7 +16,9 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.add_column('transactions', sa.Column('installment_current', sa.Integer(), nullable=True))
     op.add_column('transactions', sa.Column('installment_total', sa.Integer(), nullable=True))
+    op.add_column('transactions', sa.Column('original_purchase_date', sa.Date(), nullable=True))
 
 def downgrade() -> None:
+    op.drop_column('transactions', 'original_purchase_date')
     op.drop_column('transactions', 'installment_total')
     op.drop_column('transactions', 'installment_current')
