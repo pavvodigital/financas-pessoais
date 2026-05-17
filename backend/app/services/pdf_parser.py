@@ -42,8 +42,12 @@ TX_LINE = re.compile(
 #   TURISMO E ENTRETENIM.BARUERI   (no space before dot)
 CAT_LINE = re.compile(r"^([A-ZÁÉÍÓÚÃÕÂÊÔÇ\s]+?)\s*\.\s*\S", re.UNICODE)
 
-# Vencimento date – used to extract the statement year
-VENCIMENTO_RE = re.compile(r"Vencimento:\s*\d{2}/\d{2}/(\d{4})")
+# Vencimento date – captures day/month/year
+VENCIMENTO_RE = re.compile(r"Vencimento:\s*(\d{2})/(\d{2})/(\d{4})")
+
+# Special charges that don't appear as TX_LINE transactions
+IOF_REPASSE_RE = re.compile(r"Repasse de IOF em R\$\s*([\d.]+,\d{2})")
+ENCARGOS_SUMM_RE = re.compile(r"[A-Z]\s+Encargos\s*\([^)]*\)\s+([\d.]+,\d{2})")
 
 # Lines that should be skipped (section headers, totals, etc.)
 SKIP_LINE_RE = re.compile(
@@ -302,19 +306,29 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
     transactions: list[dict[str, Any]] = []
 
     with pdfplumber.open(path) as pdf:
-        # --- 1. Detect statement year and month from the Vencimento field (page 0) ---
+        # --- 1. Collect page texts + detect vencimento date (day/month/year) ---
         statement_year: int = datetime.now().year
         statement_month: int = datetime.now().month
+        statement_day: int = 1
+        vencimento_date: date | None = None
+        page_texts: list[str] = []
+
         for page in pdf.pages:
             text = page.extract_text() or ""
-            m = VENCIMENTO_RE.search(text)
-            if m:
-                statement_year = int(m.group(1))
-                # Extract month from the full Vencimento date (DD/MM/YYYY)
-                venc_full = re.search(r"Vencimento:\s*\d{2}/(\d{2})/\d{4}", text)
-                if venc_full:
-                    statement_month = int(venc_full.group(1))
-                break
+            page_texts.append(text)
+            if vencimento_date is None:
+                m = VENCIMENTO_RE.search(text)
+                if m:
+                    statement_day = int(m.group(1))
+                    statement_month = int(m.group(2))
+                    statement_year = int(m.group(3))
+                    try:
+                        vencimento_date = date(statement_year, statement_month, statement_day)
+                    except ValueError:
+                        vencimento_date = date(statement_year, statement_month, 1)
+
+        if vencimento_date is None:
+            vencimento_date = date(statement_year, statement_month, statement_day)
 
         # --- 2. Scan every page line by line ---
         for page in pdf.pages:
@@ -409,5 +423,41 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                         continue
 
                 i += 1
+
+        # --- 3. Special charges: Repasse de IOF and Encargos financeiros ---
+        # These appear as summary/total lines that don't match TX_LINE format.
+        full_text = "\n".join(page_texts)
+
+        iof_m = IOF_REPASSE_RE.search(full_text)
+        if iof_m:
+            val = float(iof_m.group(1).replace(".", "").replace(",", "."))
+            transactions.append({
+                "date": vencimento_date,
+                "description": "Repasse de IOF Internacional",
+                "merchant_name": "Repasse de IOF Internacional",
+                "amount": -val,
+                "itau_category": None,
+                "source": "credit_card",
+                "raw_text": iof_m.group(0).strip(),
+                "installment_current": None,
+                "installment_total": None,
+                "original_purchase_date": None,
+            })
+
+        enc_m = ENCARGOS_SUMM_RE.search(full_text)
+        if enc_m:
+            val = float(enc_m.group(1).replace(".", "").replace(",", "."))
+            transactions.append({
+                "date": vencimento_date,
+                "description": "Encargos Financeiros",
+                "merchant_name": "Encargos Financeiros",
+                "amount": -val,
+                "itau_category": None,
+                "source": "credit_card",
+                "raw_text": enc_m.group(0).strip(),
+                "installment_current": None,
+                "installment_total": None,
+                "original_purchase_date": None,
+            })
 
     return transactions
