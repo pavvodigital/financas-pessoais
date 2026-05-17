@@ -165,6 +165,67 @@ Add `categoryId` filter param support: when user arrives from dashboard cross-fi
 
 ---
 
+## PDF Parser Rewrite (Itaú Credit Card)
+
+### Problems Found in Real PDFs
+
+**Problem 1 — Two-column merging:** pdfplumber's `extract_text()` merges the two-column layout of Itaú faturas into single lines, combining two transactions:
+```
+28/04 TerapiasBastos 01/02 812,50  06/04 FACEBK *YR5SLG9LB2 415,28
+```
+Current parser captures wrong merchant and wrong amount.
+
+**Problem 2 — Installment tag in merchant name:** Installment purchases appear as `MERCHANT NN/NN` e.g. `TerapiasBastos 01/02`, `HTM*RB7 DIGITAL LT 07/12`. The `NN/NN` pollutes merchant name, breaking grouping and trend search.
+
+### Solution: bbox-based column extraction
+
+Replace `page.extract_text()` with `page.extract_words()` which returns each word with its X/Y bounding box. Split by column midpoint (`page.width / 2`), group words by Y-coordinate (±3pt tolerance) within each column, reconstruct one line per transaction.
+
+```python
+words = page.extract_words(keep_blank_chars=False, extra_attrs=["x0","top"])
+mid = page.width / 2
+left  = [w for w in words if w["x0"] < mid]
+right = [w for w in words if w["x0"] >= mid]
+# group each by rounded Y → reconstruct lines → apply TX_LINE regex
+```
+
+Category line peek logic (i+1) still works — category line is the next Y-row in the same column.
+
+### Installment stripping
+
+After merchant captured from TX_LINE, strip trailing ` NN/NN` pattern:
+```python
+INSTALLMENT_RE = re.compile(r"\s+(\d{1,2})/(\d{1,2})$")
+m = INSTALLMENT_RE.search(merchant)
+if m:
+    installment_current, installment_total = int(m.group(1)), int(m.group(2))
+    merchant = INSTALLMENT_RE.sub("", merchant).strip()
+```
+
+Store `installment_current: int | None` and `installment_total: int | None` on the Transaction model. New alembic migration required.
+
+### Bank-detection architecture
+
+Parser is and remains Itaú-specific. Future banks get their own parser function. Detection by filename/content:
+
+```python
+def _detect_bank(filename: str, content: bytes) -> str:
+    if b"Banco Ita" in content or "itau" in filename.lower():
+        return "itau"
+    return "unknown"  # reject unknown banks with 422
+```
+
+`_detect_bank` added to `upload.py` — called before parser selection. Unknown bank returns HTTP 422 with `"Banco não suportado"`.
+
+### Files modified
+
+- `backend/app/services/pdf_parser.py` — rewrite `parse_credit_card_pdf` using bbox extraction + installment strip
+- `backend/app/models/transaction.py` — add `installment_current`, `installment_total` columns
+- `backend/app/routers/upload.py` — add `_detect_bank` check
+- `backend/alembic/versions/` — new migration for installment columns
+
+---
+
 ## Out of Scope
 
 - Cashflow calendar view
