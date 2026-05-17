@@ -29,8 +29,16 @@ def get_dashboard(
         q = q.filter(Transaction.person == person)
 
     txs = q.all()
-    total_expense = abs(sum(float(t.amount) for t in txs if t.amount < 0))
-    total_income = sum(float(t.amount) for t in txs if t.amount > 0)
+
+    # Exclude "Transferências" from expense/income — transfers between own
+    # accounts inflate both sides without representing real spending.
+    transfer_cat_ids = {
+        r[0] for r in db.query(Category.id).filter(Category.name == "Transferências").all()
+    }
+    non_transfer = [t for t in txs if t.category_id not in transfer_cat_ids]
+
+    total_expense = abs(sum(float(t.amount) for t in non_transfer if t.amount < 0))
+    total_income = sum(float(t.amount) for t in non_transfer if t.amount > 0)
 
     # Last month comparison
     if month == 1:
@@ -43,12 +51,13 @@ def get_dashboard(
     )
     if person and person != "ambos":
         prev_q = prev_q.filter(Transaction.person == person)
-    prev_expense = abs(sum(float(t.amount) for t in prev_q.all() if t.amount < 0))
+    prev_non_transfer = [t for t in prev_q.all() if t.category_id not in transfer_cat_ids]
+    prev_expense = abs(sum(float(t.amount) for t in prev_non_transfer if t.amount < 0))
     vs_last = ((total_expense - prev_expense) / prev_expense * 100) if prev_expense else None
 
-    # By category
+    # By category (excluding transfers)
     cat_totals: dict[str, float] = {}
-    for tx in txs:
+    for tx in non_transfer:
         if tx.amount < 0 and tx.category_id:
             cat_totals[tx.category_id] = cat_totals.get(tx.category_id, 0) + abs(float(tx.amount))
     by_category = []
@@ -77,8 +86,8 @@ def get_dashboard(
         ).all()
         history.append(MonthlyTotal(
             year=y, month=m,
-            total_expense=round(abs(sum(float(t.amount) for t in ht if t.amount < 0)), 2),
-            total_income=round(sum(float(t.amount) for t in ht if t.amount > 0), 2),
+            total_expense=round(abs(sum(float(t.amount) for t in ht if t.amount < 0 and t.category_id not in transfer_cat_ids)), 2),
+            total_income=round(sum(float(t.amount) for t in ht if t.amount > 0 and t.category_id not in transfer_cat_ids), 2),
         ))
 
     recent_q = sorted(txs, key=lambda x: x.date, reverse=True)

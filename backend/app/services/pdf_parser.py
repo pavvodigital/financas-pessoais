@@ -139,19 +139,6 @@ def _match_category(raw_cat: str) -> str | None:
     return None
 
 
-def _original_purchase_date(tx_date: date, installment_current: int) -> date:
-    """Calculate original purchase date from installment number.
-
-    installment 4/12 in Jan 2026 → purchase was Oct 2025 (3 months back).
-    Uses stdlib calendar to clamp day (e.g. Mar 31 - 1 month → Feb 28).
-    """
-    months_back = installment_current - 1
-    m = tx_date.month - months_back
-    y = tx_date.year + (m - 1) // 12
-    m = ((m - 1) % 12) + 1
-    last_day = calendar.monthrange(y, m)[1]
-    return date(y, m, min(tx_date.day, last_day))
-
 
 def _group_words_into_lines(words: list[dict], page_width: float) -> list[str]:
     # Find the column split point by locating the largest x0 gap in the central
@@ -326,22 +313,33 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
 
                     inst_current: int | None = None
                     inst_total: int | None = None
-                    inst_match = re.search(r"\s+(\d{1,2})/(\d{1,2})$", description)
+                    inst_match = re.search(r"\s*(\d{1,2})/(\d{1,2})$", description)
                     if inst_match:
-                        inst_current = int(inst_match.group(1))
-                        inst_total = int(inst_match.group(2))
-                        description = description[:inst_match.start()].strip()
+                        cur = int(inst_match.group(1))
+                        tot = int(inst_match.group(2))
+                        if 1 <= cur <= tot <= 96:
+                            inst_current = cur
+                            inst_total = tot
+                            description = description[:inst_match.start()].strip()
 
                     day, month = map(int, day_month.split("/"))
                     year = _resolve_year(month, statement_year, statement_month)
                     try:
-                        tx_date = date(year, month, day)
+                        purchase_date = date(year, month, day)
                     except ValueError:
                         i += 1
                         continue
 
-                    # Calculate original purchase date for installment transactions
-                    orig_date = _original_purchase_date(tx_date, inst_current) if inst_current else None
+                    if inst_current is not None:
+                        # Use billing month as tx_date — prevents duplicate rows when
+                        # the same installment appears in multiple monthly faturas.
+                        # The PDF shows original purchase date; store it separately.
+                        orig_date = purchase_date
+                        last_day = calendar.monthrange(statement_year, statement_month)[1]
+                        tx_date = date(statement_year, statement_month, min(day, last_day))
+                    else:
+                        orig_date = None
+                        tx_date = purchase_date
 
                     itau_cat: str | None = None
                     consumed_category = False

@@ -1,32 +1,14 @@
-from datetime import date
-from app.services.pdf_parser import _group_words_into_lines, _original_purchase_date
+from app.services.pdf_parser import _group_words_into_lines
 
-def test_original_purchase_date_installment_4_of_12():
-    """4th installment in Jan → original purchase was Oct (3 months back)."""
-    result = _original_purchase_date(date(2026, 1, 28), installment_current=4)
-    assert result == date(2025, 10, 28)
-
-def test_original_purchase_date_installment_1_of_12():
-    """1st installment → same date as statement (no backtrack)."""
-    result = _original_purchase_date(date(2026, 1, 28), installment_current=1)
-    assert result == date(2026, 1, 28)
-
-def test_original_purchase_date_clamps_day():
-    """Mar 31 minus 1 month → Feb 28 (non-leap year), not ValueError."""
-    result = _original_purchase_date(date(2026, 3, 31), installment_current=2)
-    assert result == date(2026, 2, 28)
 
 def test_group_words_into_lines_separates_two_columns():
     """Simulates two transactions merged into one line by extract_text."""
-    # Left column: 28/04 TerapiasBastos 01/02 812,50
-    # Right column: 06/04 FACEBK 415,28
     page_width = 595.0
     words = [
         {"text": "28/04", "x0": 45.0, "top": 142.0},
         {"text": "TerapiasBastos", "x0": 80.0, "top": 142.0},
         {"text": "01/02", "x0": 190.0, "top": 142.0},
         {"text": "812,50", "x0": 240.0, "top": 142.0},
-        # right column same row
         {"text": "06/04", "x0": 320.0, "top": 142.0},
         {"text": "FACEBK", "x0": 355.0, "top": 142.0},
         {"text": "415,28", "x0": 430.0, "top": 142.0},
@@ -37,6 +19,7 @@ def test_group_words_into_lines_separates_two_columns():
     assert "FACEBK" in lines[1]
     assert "812,50" in lines[0]
     assert "415,28" in lines[1]
+
 
 def test_group_words_into_lines_single_column():
     """Single-column pages still produce one line per row."""
