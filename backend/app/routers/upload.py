@@ -105,6 +105,8 @@ async def upload_pdf(
                 category_name=cat.name if cat else None,
                 source=tx["source"],
                 raw_text=tx.get("raw_text"),
+                installment_current=tx.get("installment_current"),
+                installment_total=tx.get("installment_total"),
             )
         )
 
@@ -159,6 +161,8 @@ def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
             source=tx.source,
             file_id=uploaded.id,
             raw_text=tx.raw_text,
+            installment_current=tx.installment_current,
+            installment_total=tx.installment_total,
         )
         db.add(t)
 

@@ -11,6 +11,8 @@ class TransactionPreview(BaseModel):
     category_name: Optional[str] = None
     source: str
     raw_text: Optional[str] = None
+    installment_current: Optional[int] = None
+    installment_total: Optional[int] = None
 
 
 class TransactionIn(BaseModel):
@@ -21,6 +23,8 @@ class TransactionIn(BaseModel):
     category_id: Optional[str] = None
     source: str
     raw_text: Optional[str] = None
+    installment_current: Optional[int] = None
+    installment_total: Optional[int] = None
 
 
 class UploadPreviewResponse(BaseModel):
