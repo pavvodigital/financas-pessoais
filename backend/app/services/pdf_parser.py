@@ -385,16 +385,12 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                         i += 1
                         continue
 
-                    if inst_current is not None:
-                        # Use billing month as tx_date — prevents duplicate rows when
-                        # the same installment appears in multiple monthly faturas.
-                        # The PDF shows original purchase date; store it separately.
-                        orig_date = purchase_date
-                        last_day = calendar.monthrange(statement_year, statement_month)[1]
-                        tx_date = date(statement_year, statement_month, min(day, last_day))
-                    else:
-                        orig_date = None
-                        tx_date = purchase_date
+                    # Always attribute to billing month so filtering by month
+                    # matches the fatura total exactly. Purchases made late in
+                    # a cycle close in the next fatura regardless of purchase date.
+                    last_day = calendar.monthrange(statement_year, statement_month)[1]
+                    tx_date = date(statement_year, statement_month, min(day, last_day))
+                    orig_date = purchase_date  # preserve actual purchase date
 
                     itau_cat: str | None = None
                     consumed_category = False
