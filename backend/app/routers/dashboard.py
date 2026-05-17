@@ -40,8 +40,18 @@ def get_dashboard(
         r[0] for r in db.query(Category.id).filter(Category.name == "Transferências").all()
     }
 
-    total_expense = abs(sum(float(t.amount) for t in txs if t.amount < 0))
-    total_income = sum(float(t.amount) for t in txs if t.amount > 0)
+    def _net_totals(transactions):
+        """CC: credits offset charges (net fatura). Bank: positives = income, negatives = expense."""
+        cc_net = sum(float(t.amount) for t in transactions if t.source == "credit_card")
+        cc_expense = max(0.0, -cc_net)
+        cc_income = max(0.0, cc_net)
+        bank_expense = abs(sum(float(t.amount) for t in transactions if t.amount < 0 and t.source == "bank"))
+        bank_income = sum(float(t.amount) for t in transactions if t.amount > 0 and t.source == "bank")
+        return cc_expense + bank_expense, cc_income + bank_income
+
+    total_expense, total_income = _net_totals(txs)
+    # Gross CC charges used as denominator for pie chart percentages
+    gross_charge_total = abs(sum(float(t.amount) for t in txs if t.amount < 0))
 
     # Last month comparison
     if month == 1:
@@ -57,7 +67,7 @@ def get_dashboard(
     if source:
         prev_q = prev_q.filter(Transaction.source == source)
     prev_txs = prev_q.all()
-    prev_expense = abs(sum(float(t.amount) for t in prev_txs if t.amount < 0))
+    prev_expense, _ = _net_totals(prev_txs)
     vs_last = ((total_expense - prev_expense) / prev_expense * 100) if prev_expense else None
 
     # By category (excluding transfers — keeps pie chart focused on spending)
@@ -75,7 +85,7 @@ def get_dashboard(
                 category_name=cat.name,
                 color=cat.color,
                 total=round(total, 2),
-                percentage=round(total / total_expense * 100, 1) if total_expense else 0,
+                percentage=round(total / gross_charge_total * 100, 1) if gross_charge_total else 0,
             ))
 
     # Monthly history (last 6 months) — apply same person/source filters
@@ -95,10 +105,11 @@ def get_dashboard(
         if source:
             hq = hq.filter(Transaction.source == source)
         ht = hq.all()
+        exp_h, inc_h = _net_totals(ht)
         history.append(MonthlyTotal(
             year=y, month=m,
-            total_expense=round(abs(sum(float(t.amount) for t in ht if t.amount < 0)), 2),
-            total_income=round(sum(float(t.amount) for t in ht if t.amount > 0), 2),
+            total_expense=round(exp_h, 2),
+            total_income=round(inc_h, 2),
         ))
 
     recent_q = sorted(txs, key=lambda x: x.date, reverse=True)
@@ -146,8 +157,9 @@ def balance_history(person: str = Query(default="ambos"), db: Session = Depends(
         if person != "ambos":
             q = q.filter(Transaction.person == person)
         txs = q.all()
-        income = round(sum(float(t.amount) for t in txs if t.amount > 0), 2)
-        expense = round(abs(sum(float(t.amount) for t in txs if t.amount < 0)), 2)
+        cc_net = sum(float(t.amount) for t in txs if t.source == "credit_card")
+        expense = round(max(0.0, -cc_net) + abs(sum(float(t.amount) for t in txs if t.amount < 0 and t.source == "bank")), 2)
+        income = round(max(0.0, cc_net) + sum(float(t.amount) for t in txs if t.amount > 0 and t.source == "bank"), 2)
         balance = round(income - expense, 2)
         cumulative = round(cumulative + balance, 2)
         result.append({
