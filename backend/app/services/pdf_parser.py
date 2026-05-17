@@ -140,26 +140,50 @@ def _match_category(raw_cat: str) -> str | None:
 
 
 
+_DATE_WORD = re.compile(r"^\d{2}/\d{2}$")
+_AMT_WORD = re.compile(r"^\d{1,3}(?:\.\d{3})*,\d{2}$")
+
+
 def _group_words_into_lines(words: list[dict], page_width: float) -> list[str]:
-    # Find the column split point by locating the largest x0 gap in the central
-    # band of the page (between 30% and 80% of page width).  This handles Itaú
-    # faturas where left-column amounts sit at ~321pt and right-column dates
-    # start at ~365pt on a 595pt page — well beyond page.width/2 (297.5).
-    lo, hi = page_width * 0.30, page_width * 0.80
-    central_x0 = sorted({round(w["x0"]) for w in words if lo <= w["x0"] <= hi})
-    if len(central_x0) >= 2:
-        gaps = [
-            (central_x0[i + 1] - central_x0[i], central_x0[i], central_x0[i + 1])
-            for i in range(len(central_x0) - 1)
-            if central_x0[i + 1] - central_x0[i] > 20
+    # Strategy: detect right-column date words (pure DD/MM at x0 > 45% of page
+    # width) and anchor the split between those dates and the left-column amounts
+    # that precede them.  This is robust against pages with full-width paragraph
+    # text that fills every gap in the central band — the old gap-detection
+    # approach fell back to page_width/2 (≈297.5 pt) which incorrectly placed
+    # left-column amounts (x0≈321 pt) in the right column.
+    lo = page_width * 0.30
+    right_threshold = page_width * 0.45  # ≈268 pt on 595 pt page
+
+    right_dates = [w for w in words if _DATE_WORD.match(w["text"]) and w["x0"] > right_threshold]
+
+    if right_dates:
+        right_col_start = min(w["x0"] for w in right_dates)
+        left_amounts = [
+            w for w in words
+            if _AMT_WORD.match(w["text"]) and lo <= w["x0"] < right_col_start
         ]
-        if gaps:
-            _, gap_lo, gap_hi = max(gaps)
-            mid = (gap_lo + gap_hi) / 2
+        if left_amounts:
+            left_col_end = max(w["x0"] for w in left_amounts)
+        else:
+            left_col_end = lo
+        mid = (left_col_end + right_col_start) / 2
+    else:
+        # Single-column page: fall back to largest-gap detection in central band.
+        hi = page_width * 0.80
+        central_x0 = sorted({round(w["x0"]) for w in words if lo <= w["x0"] <= hi})
+        if len(central_x0) >= 2:
+            gaps = [
+                (central_x0[i + 1] - central_x0[i], central_x0[i], central_x0[i + 1])
+                for i in range(len(central_x0) - 1)
+                if central_x0[i + 1] - central_x0[i] > 20
+            ]
+            if gaps:
+                _, gap_lo, gap_hi = max(gaps)
+                mid = (gap_lo + gap_hi) / 2
+            else:
+                mid = page_width / 2
         else:
             mid = page_width / 2
-    else:
-        mid = page_width / 2
 
     left  = [w for w in words if w["x0"] < mid]
     right = [w for w in words if w["x0"] >= mid]
@@ -297,11 +321,27 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
             words = page.extract_words(keep_blank_chars=False, extra_attrs=["top"])
             lines = _group_words_into_lines(words, page.width)
 
+            # Once we hit the "Compras parceladas - próximas faturas" section
+            # (future installment summary), stop accepting TX_LINE matches for
+            # this page — those lines are not real charges for the current month.
+            past_future_section = False
+
             i = 0
             while i < len(lines):
                 line = lines[i].strip()
 
-                if not line or SKIP_LINE_RE.match(line):
+                if not line:
+                    i += 1
+                    continue
+
+                if SKIP_LINE_RE.match(line):
+                    # If this is a future-section marker, set the stop flag.
+                    if re.search(r"Compras parceladas|Pr[óo]xima fatura|Demais faturas", line, re.IGNORECASE):
+                        past_future_section = True
+                    i += 1
+                    continue
+
+                if past_future_section:
                     i += 1
                     continue
 
