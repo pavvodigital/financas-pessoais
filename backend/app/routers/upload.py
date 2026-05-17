@@ -133,12 +133,32 @@ async def upload_pdf(
             )
         )
 
+    # Extract billing month/year from vencimento (credit card) or from first transaction date
+    billing_month, billing_year = None, None
+    if file_type == "credit_card":
+        import pdfplumber, io, re as _re
+        _VENC_RE = _re.compile(r"Vencimento:\s*\d{2}/(\d{2})/(\d{4})")
+        try:
+            with pdfplumber.open(io.BytesIO(content)) as _pdf:
+                for _page in _pdf.pages:
+                    _m = _VENC_RE.search(_page.extract_text() or "")
+                    if _m:
+                        billing_month, billing_year = int(_m.group(1)), int(_m.group(2))
+                        break
+        except Exception:
+            pass
+    if not billing_month:
+        _now = __import__("datetime").datetime.now()
+        billing_month, billing_year = _now.month, _now.year
+
     temp_id = str(uuid.uuid4())
     _temp_store[temp_id] = {
         "previews": previews,
         "file_type": file_type,
         "filename": file.filename,
         "file_hash": file_hash,
+        "billing_month": billing_month,
+        "billing_year": billing_year,
     }
     return UploadPreviewResponse(
         file_id_temp=temp_id,
@@ -156,9 +176,8 @@ def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
     stored = _temp_store.pop(req.file_id_temp)
     file_hash = stored.get("file_hash")
 
-    dates = [t.date for t in req.transactions]
-    month = dates[0].month if dates else datetime.now().month
-    year = dates[0].year if dates else datetime.now().year
+    month = stored.get("billing_month") or datetime.now().month
+    year = stored.get("billing_year") or datetime.now().year
 
     uploaded = UploadedFile(
         filename=req.filename,
