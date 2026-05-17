@@ -20,7 +20,7 @@ interface BalancePoint {
 
 export default function Dashboard() {
   const { person } = usePersonStore();
-  const { month, year, categoryId, setMonth, setCategory } = useFilterStore();
+  const { month, year, categoryId, source, setMonth, setCategory } = useFilterStore();
   const [data, setData] = useState<DashboardData | null>(null);
   const [prevData, setPrevData] = useState<DashboardData | null>(null);
   const [balanceHistory, setBalanceHistory] = useState<BalancePoint[]>([]);
@@ -33,6 +33,7 @@ export default function Dashboard() {
   useEffect(() => {
     const params = new URLSearchParams({ month: String(month), year: String(year), person });
     if (categoryId) params.set("category_id", categoryId);
+    if (source) params.set("source", source);
     api.get<DashboardData>(`/dashboard?${params}`).then((r) => setData(r.data));
 
     const prevMonth = month === 1 ? 12 : month - 1;
@@ -43,7 +44,7 @@ export default function Dashboard() {
       person,
     });
     api.get<DashboardData>(`/dashboard?${prevParams}`).then((r) => setPrevData(r.data));
-  }, [person, month, year, categoryId]);
+  }, [person, month, year, categoryId, source]);
 
   useEffect(() => {
     api

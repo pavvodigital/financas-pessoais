@@ -15,6 +15,7 @@ def get_dashboard(
     year: int = Query(default=None),
     person: str = Query(default=None),
     category_id: str = Query(default=None),
+    source: str = Query(default=None),
     db: Session = Depends(get_db),
 ):
     now = datetime.now()
@@ -27,6 +28,8 @@ def get_dashboard(
     )
     if person and person != "ambos":
         q = q.filter(Transaction.person == person)
+    if source:
+        q = q.filter(Transaction.source == source)
 
     txs = q.all()
 

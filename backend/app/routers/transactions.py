@@ -40,6 +40,7 @@ def list_transactions(
     year: Optional[int] = None,
     person: Optional[str] = None,
     category_id: Optional[str] = None,
+    source: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
@@ -53,6 +54,8 @@ def list_transactions(
         q = q.filter(Transaction.person == person)
     if category_id:
         q = q.filter(Transaction.category_id == category_id)
+    if source:
+        q = q.filter(Transaction.source == source)
     total = q.count()
     txs = q.order_by(Transaction.date.desc()).offset(skip).limit(limit).all()
     return {"total": total, "items": [_tx_dict(t, db) for t in txs]}
