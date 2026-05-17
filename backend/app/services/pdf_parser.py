@@ -152,8 +152,18 @@ STMT_LINE = re.compile(
     r"^(\d{2}/\d{2}/\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})$"
 )
 
-# Lines to skip in the extrato
-STMT_SKIP_RE = re.compile(r"SALDO DO DIA", re.IGNORECASE)
+# Lines to skip in the extrato (balance summaries + credit card payment lines)
+STMT_SKIP_RE = re.compile(
+    r"SALDO DO DIA"
+    r"|PAGAMENTO\s+FATURA"
+    r"|PAG\s+FATURA"
+    r"|PAG\s+ITAUCARD"
+    r"|DEBITO\s+AUT\s+CARTAO"
+    r"|ITAU\s+MC\s+\d"
+    r"|ITAU\s+VISA\s+\d"
+    r"|DEBITO\s+AUTOMATICO\s+CARTAO",
+    re.IGNORECASE,
+)
 
 
 # ---------------------------------------------------------------------------

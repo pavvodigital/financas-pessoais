@@ -1,8 +1,10 @@
 import uuid
 import tempfile
 import os
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+import hashlib
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from app.database import get_db
 from app.auth import verify_token
 from app.services.pdf_parser import parse_credit_card_pdf, parse_statement_pdf
@@ -30,6 +32,40 @@ def _detect_type(filename: str) -> str:
     return "statement"
 
 
+def _md5(content: bytes) -> str:
+    return hashlib.md5(content).hexdigest()
+
+
+@router.get("/files")
+def list_uploads(db: Session = Depends(get_db)):
+    files = db.execute(
+        select(UploadedFile).order_by(UploadedFile.imported_at.desc())
+    ).scalars().all()
+    return [
+        {
+            "id": f.id,
+            "filename": f.filename,
+            "file_type": f.file_type,
+            "person": f.person,
+            "month": f.month,
+            "year": f.year,
+            "imported_at": f.imported_at.isoformat(),
+            "transaction_count": f.transaction_count,
+        }
+        for f in files
+    ]
+
+
+@router.delete("/files/{file_id}")
+def delete_upload(file_id: str, db: Session = Depends(get_db)):
+    f = db.get(UploadedFile, file_id)
+    if not f:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    db.delete(f)
+    db.commit()
+    return {"deleted": file_id}
+
+
 @router.post("", response_model=UploadPreviewResponse)
 async def upload_pdf(
     file: UploadFile = File(...),
@@ -37,6 +73,14 @@ async def upload_pdf(
     db: Session = Depends(get_db),
 ):
     content = await file.read()
+    file_hash = _md5(content)
+
+    # Duplicate detection
+    existing = db.execute(
+        select(UploadedFile).where(UploadedFile.file_hash == file_hash)
+    ).scalar_one_or_none()
+    duplicate_of = existing.id if existing else None
+
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
@@ -69,18 +113,23 @@ async def upload_pdf(
         "previews": previews,
         "file_type": file_type,
         "filename": file.filename,
+        "file_hash": file_hash,
     }
-    return UploadPreviewResponse(file_id_temp=temp_id, transactions=previews)
+    return UploadPreviewResponse(
+        file_id_temp=temp_id,
+        transactions=previews,
+        duplicate_of=duplicate_of,
+    )
 
 
 @router.post("/confirm")
 def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
     from datetime import datetime
-    from fastapi import HTTPException
 
     if req.file_id_temp not in _temp_store:
         raise HTTPException(status_code=422, detail="file_id_temp inválido ou expirado")
-    _temp_store.pop(req.file_id_temp)
+    stored = _temp_store.pop(req.file_id_temp)
+    file_hash = stored.get("file_hash")
 
     dates = [t.date for t in req.transactions]
     month = dates[0].month if dates else datetime.now().month
@@ -93,6 +142,7 @@ def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
         month=month,
         year=year,
         transaction_count=len(req.transactions),
+        file_hash=file_hash,
     )
     db.add(uploaded)
     db.flush()

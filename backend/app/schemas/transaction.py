@@ -26,6 +26,7 @@ class TransactionIn(BaseModel):
 class UploadPreviewResponse(BaseModel):
     file_id_temp: str
     transactions: list[TransactionPreview]
+    duplicate_of: Optional[str] = None
 
 
 class UploadConfirmRequest(BaseModel):

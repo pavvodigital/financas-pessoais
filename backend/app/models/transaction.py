@@ -16,7 +16,8 @@ class UploadedFile(Base):
     year: Mapped[int] = mapped_column()
     imported_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     transaction_count: Mapped[int] = mapped_column(default=0)
-    transactions: Mapped[list["Transaction"]] = relationship(back_populates="file")
+    file_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    transactions: Mapped[list["Transaction"]] = relationship(back_populates="file", cascade="all, delete-orphan")
 
 
 class Transaction(Base):
