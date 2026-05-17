@@ -32,6 +32,13 @@ def _detect_type(filename: str) -> str:
     return "statement"
 
 
+def _detect_bank(filename: str, content: bytes) -> str:
+    name = filename.lower()
+    if b"Banco Ita" in content or b"itaucard" in content or "itau" in name or "fatura" in name:
+        return "itau"
+    return "unknown"
+
+
 def _md5(content: bytes) -> str:
     return hashlib.md5(content).hexdigest()
 
@@ -73,6 +80,9 @@ async def upload_pdf(
     db: Session = Depends(get_db),
 ):
     content = await file.read()
+    bank = _detect_bank(file.filename or "", content)
+    if bank == "unknown":
+        raise HTTPException(status_code=422, detail="Banco não suportado. Apenas arquivos Itaú são aceitos.")
     file_hash = _md5(content)
 
     # Duplicate detection

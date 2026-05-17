@@ -72,3 +72,17 @@ def test_upload_requires_auth(client):
             data={"person": "diogo"},
         )
     assert resp.status_code == 401
+
+
+def test_upload_unknown_bank_returns_422(client):
+    """Non-Itaú PDF (no Itaú signature) should return 422."""
+    import io
+    fake_pdf = b"%PDF-1.4\n% not an itau pdf\n"
+    r = client.post(
+        "/api/upload",
+        files={"file": ("bradesco.pdf", io.BytesIO(fake_pdf), "application/pdf")},
+        data={"person": "diogo"},
+        headers=auth(client),
+    )
+    assert r.status_code == 422
+    assert "suportado" in r.json()["detail"].lower()
