@@ -133,7 +133,7 @@ async def upload_pdf(
             )
         )
 
-    # Extract billing month/year from vencimento (credit card) or from first transaction date
+    # Extract billing month/year from vencimento (credit card) or most common tx month (statement)
     billing_month, billing_year = None, None
     if file_type == "credit_card":
         import pdfplumber, io, re as _re
@@ -147,6 +147,19 @@ async def upload_pdf(
                         break
         except Exception:
             pass
+    else:
+        # Use most common (month, year) among transactions
+        from collections import Counter
+        counts = Counter((p.date.month, p.date.year) for p in previews if p.date)
+        if counts:
+            (billing_month, billing_year), _ = counts.most_common(1)[0]
+    if not billing_month:
+        # Fallback: parse filename e.g. itau_extrato_012026.pdf → month=01 year=2026
+        import re as _re
+        _fn = file.filename or ""
+        _fn_m = _re.search(r"(\d{2})(\d{4})", _fn)
+        if _fn_m:
+            billing_month, billing_year = int(_fn_m.group(1)), int(_fn_m.group(2))
     if not billing_month:
         _now = __import__("datetime").datetime.now()
         billing_month, billing_year = _now.month, _now.year
