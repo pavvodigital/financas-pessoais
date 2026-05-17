@@ -64,6 +64,7 @@ Initialized to current month/year, `categoryId: null`. Persisted in memory only 
    - Gastos: total expenses for selected month/person + `▲/▼ X% vs mês anterior`
    - Renda: total income + trend indicator
    - Saldo: income minus expenses
+   - Prior-month figures come from calling `/api/dashboard` twice: once for selected month, once for the previous month. No new endpoint needed.
 
 3. **Charts Row** (two columns)
    - Left (2/3 width): Bar chart — gastos + renda por mês (últimos 6 meses)
@@ -108,7 +109,7 @@ Initialized to current month/year, `categoryId: null`. Persisted in memory only 
 ]
 ```
 
-Returns last 12 months. `cumulative` = running sum of `balance`.
+Returns last 12 months ordered oldest→newest. `cumulative` is relative — starts at 0 for the earliest month and accumulates forward. It does NOT represent the actual account balance (which would require a known starting balance). It shows the net gain/loss trend over the period.
 
 **File:** `backend/app/routers/dashboard.py` — new route added to existing router.
 
@@ -120,7 +121,7 @@ Returns last 12 months. `cumulative` = running sum of `balance`.
 - Replace all `bg-[#0f0f1a]` → `bg-[#0f172a]`
 - Replace all `border-[#333]` → `border-[#334155]`
 - Replace all `text-[#7c6af7]` → `text-[#38bdf8]` (links, active states)
-- Replace all `bg-[#7c6af7]` → `bg-[#0ea5e9]` (primary buttons)
+- Replace all `bg-[#7c6af7]` → `bg-sky-500` / `#0ea5e9` (primary buttons — intentionally slightly darker than the `#38bdf8` primary token used for text/icons, to ensure contrast on dark backgrounds)
 - Ring/focus: `ring-[#7c6af7]` → `ring-[#38bdf8]`
 - Sidebar active nav: `bg-[#7c6af7]` → `bg-[#0ea5e9]`
 
@@ -138,7 +139,7 @@ Each nav item gets an emoji icon prefix for faster scanning:
 
 ## Transactions Page
 
-Add `categoryId` filter param support: when user arrives from dashboard cross-filter click, the category filter is pre-populated. The filter store is shared — no URL params needed.
+The Transactions page has its own local filter state (month, person). When it mounts, it reads `categoryId` from the filter store and pre-populates its own local category filter. After that, the Transactions page manages its own filters independently — it does NOT write back to the filter store. This avoids the two mechanisms conflicting: the filter store is write-only from the dashboard, read-once on mount by Transactions.
 
 ---
 
@@ -202,7 +203,7 @@ if m:
     merchant = INSTALLMENT_RE.sub("", merchant).strip()
 ```
 
-Store `installment_current: int | None` and `installment_total: int | None` on the Transaction model. New alembic migration required.
+Store `installment_current: int | None` and `installment_total: int | None` on the Transaction model. New alembic migration required. UI display of installment info is out of scope — columns are stored for future use only.
 
 ### Bank-detection architecture
 
