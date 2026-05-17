@@ -16,6 +16,7 @@ where AMOUNT can be:
 The year is extracted from the "Vencimento: DD/MM/YYYY" header on page 0.
 """
 
+import calendar
 import re
 from datetime import date, datetime
 from typing import Any
@@ -144,7 +145,6 @@ def _original_purchase_date(tx_date: date, installment_current: int) -> date:
     installment 4/12 in Jan 2026 → purchase was Oct 2025 (3 months back).
     Uses stdlib calendar to clamp day (e.g. Mar 31 - 1 month → Feb 28).
     """
-    import calendar
     months_back = installment_current - 1
     m = tx_date.month - months_back
     y = tx_date.year + (m - 1) // 12
