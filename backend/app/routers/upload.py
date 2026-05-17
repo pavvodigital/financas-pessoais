@@ -148,11 +148,18 @@ async def upload_pdf(
         except Exception:
             pass
     else:
-        # Use most common (month, year) among transactions
-        from collections import Counter
-        counts = Counter((p.date.month, p.date.year) for p in previews if p.date)
-        if counts:
-            (billing_month, billing_year), _ = counts.most_common(1)[0]
+        # Use start date of "período de visualização: DD/MM/YYYY até ..." in extrato header
+        import pdfplumber as _plumber, io as _io, re as _re
+        _PERIODO_RE = _re.compile(r"per[ií]odo.*?:\s*(\d{2})/(\d{2})/(\d{4})", _re.IGNORECASE)
+        try:
+            with _plumber.open(_io.BytesIO(content)) as _pdf:
+                for _page in _pdf.pages:
+                    _pm = _PERIODO_RE.search(_page.extract_text() or "")
+                    if _pm:
+                        billing_month, billing_year = int(_pm.group(2)), int(_pm.group(3))
+                        break
+        except Exception:
+            pass
     if not billing_month:
         # Fallback: parse filename e.g. itau_extrato_012026.pdf → month=01 year=2026
         import re as _re
