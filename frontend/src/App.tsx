@@ -6,6 +6,7 @@ import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import Plans from "./pages/Plans";
 import Trends from "./pages/Trends";
+import Installments from "./pages/Installments";
 import Layout from "./components/Layout/Sidebar";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="categories" element={<Categories />} />
           <Route path="plans" element={<Plans />} />
           <Route path="trends" element={<Trends />} />
+          <Route path="installments" element={<Installments />} />
         </Route>
       </Routes>
     </BrowserRouter>
