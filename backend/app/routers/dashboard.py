@@ -41,13 +41,14 @@ def get_dashboard(
     }
 
     def _net_totals(transactions):
-        """CC: credits offset charges (net fatura). Bank: positives = income, negatives = expense."""
+        """CC: credits offset charges (net fatura). Conta/manual: positivo = receita, negativo = despesa."""
         cc_net = sum(float(t.amount) for t in transactions if t.source == "credit_card")
         cc_expense = max(0.0, -cc_net)
         cc_income = max(0.0, cc_net)
-        bank_expense = abs(sum(float(t.amount) for t in transactions if t.amount < 0 and t.source == "bank"))
-        bank_income = sum(float(t.amount) for t in transactions if t.amount > 0 and t.source == "bank")
-        return cc_expense + bank_expense, cc_income + bank_income
+        # Tudo que não é cartão (banco + lançamentos manuais) entra por sinal.
+        non_cc_expense = abs(sum(float(t.amount) for t in transactions if t.amount < 0 and t.source != "credit_card"))
+        non_cc_income = sum(float(t.amount) for t in transactions if t.amount > 0 and t.source != "credit_card")
+        return cc_expense + non_cc_expense, cc_income + non_cc_income
 
     total_expense, total_income = _net_totals(txs)
     # Gross CC charges used as denominator for pie chart percentages
@@ -158,8 +159,8 @@ def balance_history(person: str = Query(default="ambos"), db: Session = Depends(
             q = q.filter(Transaction.person == person)
         txs = q.all()
         cc_net = sum(float(t.amount) for t in txs if t.source == "credit_card")
-        expense = round(max(0.0, -cc_net) + abs(sum(float(t.amount) for t in txs if t.amount < 0 and t.source == "bank")), 2)
-        income = round(max(0.0, cc_net) + sum(float(t.amount) for t in txs if t.amount > 0 and t.source == "bank"), 2)
+        expense = round(max(0.0, -cc_net) + abs(sum(float(t.amount) for t in txs if t.amount < 0 and t.source != "credit_card")), 2)
+        income = round(max(0.0, cc_net) + sum(float(t.amount) for t in txs if t.amount > 0 and t.source != "credit_card"), 2)
         balance = round(income - expense, 2)
         cumulative = round(cumulative + balance, 2)
         result.append({
