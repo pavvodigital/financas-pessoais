@@ -7,6 +7,7 @@ import Categories from "./pages/Categories";
 import Plans from "./pages/Plans";
 import Trends from "./pages/Trends";
 import Installments from "./pages/Installments";
+import FixedCosts from "./pages/FixedCosts";
 import Layout from "./components/Layout/Sidebar";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="plans" element={<Plans />} />
           <Route path="trends" element={<Trends />} />
           <Route path="installments" element={<Installments />} />
+          <Route path="fixed-costs" element={<FixedCosts />} />
         </Route>
       </Routes>
     </BrowserRouter>

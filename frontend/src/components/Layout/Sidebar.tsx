@@ -6,6 +6,7 @@ const navItems = [
   { to: "/import", icon: "📥", label: "Importar" },
   { to: "/transactions", icon: "💳", label: "Transações" },
   { to: "/installments", icon: "🧾", label: "Parcelas" },
+  { to: "/fixed-costs", icon: "🔁", label: "Custos Fixos" },
   { to: "/categories", icon: "🏷️", label: "Categorias" },
   { to: "/plans", icon: "🎯", label: "Planos" },
   { to: "/trends", icon: "📈", label: "Tendências" },

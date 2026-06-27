@@ -11,6 +11,7 @@ from app.routers import categories as cat_router
 from app.routers import trends as trends_router
 from app.routers import plans as plans_router
 from app.routers import installments as installments_router
+from app.routers import fixed_costs as fixed_costs_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,6 +39,7 @@ app.include_router(cat_router.router)
 app.include_router(trends_router.router)
 app.include_router(plans_router.router)
 app.include_router(installments_router.router)
+app.include_router(fixed_costs_router.router)
 
 @app.get("/api/health")
 def health():
