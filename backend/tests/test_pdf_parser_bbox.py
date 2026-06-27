@@ -1,4 +1,13 @@
-from app.services.pdf_parser import _group_words_into_lines
+from app.services.pdf_parser import _group_words_into_lines, PAYMENT_LINE_RE
+
+
+def test_payment_line_regex_skips_bill_payment_not_merchant():
+    """Pagamento de fatura ignorado; merchant 'MEIO DE PAGAMENTOS' não."""
+    assert PAYMENT_LINE_RE.match("PAGAMENTO")
+    assert PAYMENT_LINE_RE.match("Pagamento via conta")
+    assert PAYMENT_LINE_RE.match("Pagamentoviaconta")
+    assert not PAYMENT_LINE_RE.match("MEIO DE PAGAMENTOS")
+    assert not PAYMENT_LINE_RE.match("NETFLIX.COM")
 
 
 def test_group_words_into_lines_separates_two_columns():

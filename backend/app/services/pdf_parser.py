@@ -42,6 +42,12 @@ TX_LINE = re.compile(
 #   TURISMO E ENTRETENIM.BARUERI   (no space before dot)
 CAT_LINE = re.compile(r"^([A-ZÁÉÍÓÚÃÕÂÊÔÇ\s]+?)\s*\.\s*\S", re.UNICODE)
 
+# Bill-payment lines on the fatura (credit for paying the previous invoice).
+# Not a purchase — skip it. Anchored at start so it does NOT match merchants
+# like "MEIO DE PAGAMENTOS". Catches "PAGAMENTO", "Pagamento via conta",
+# "Pagamentoviaconta".
+PAYMENT_LINE_RE = re.compile(r"^pagamento", re.IGNORECASE)
+
 # Vencimento date – captures day/month/year
 VENCIMENTO_RE = re.compile(r"Vencimento:\s*(\d{2})/(\d{2})/(\d{4})")
 
@@ -365,6 +371,12 @@ def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
                     description = tx_match.group(2).strip()
                     has_minus = bool(tx_match.group(3))
                     amount_raw = tx_match.group(4)
+
+                    # Pagamento da fatura anterior aparece como crédito — não é
+                    # compra, ignora pra não distorcer o gasto.
+                    if PAYMENT_LINE_RE.match(description):
+                        i += 1
+                        continue
 
                     inst_current: int | None = None
                     inst_total: int | None = None
