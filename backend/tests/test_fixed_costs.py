@@ -72,6 +72,22 @@ def test_expected_amount_overrides_avg(client):
     assert data["monthly_total"] == 250.0
 
 
+def test_substring_match_catches_variants(client):
+    """Chave curta 'CEMIG' pega 'PIX QRS CEMIG' e 'INT CEMIG' (mesma conta)."""
+    from app.database import engine
+    from sqlalchemy.orm import sessionmaker
+    db = sessionmaker(bind=engine)()
+    for n in range(3):
+        y, m = _months_back(n)
+        _tx(db, "PIX QRS CEMIG DISTR", -100.0, y, m)
+        _tx(db, "INT CEMIG DISTRIBUICA", -50.0, y, m)
+    db.close()
+    h = {"Authorization": f"Bearer {_token(client)}"}
+    client.post("/api/fixed-costs", json={"label": "Luz", "match_key": "CEMIG"}, headers=h)
+    data = client.get("/api/fixed-costs", headers=h).json()
+    assert data["monthly_total"] == 150.0  # (100+50) por mes
+
+
 def test_delete_fixed_cost(client):
     from app.database import engine
     from sqlalchemy.orm import sessionmaker

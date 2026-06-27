@@ -65,9 +65,11 @@ def list_fixed_costs(
     fixed_keys = {f.match_key for f in fcs}
 
     def monthly_for_key(key: str, p: Optional[str]) -> dict[tuple[int, int], float]:
+        # match por "contém": chave curta tipo "CEMIG" pega "PIX QRS CEMIG DISTR"
+        # e "INT CEMIG DISTRIBUICA" (mesma conta, descrições diferentes).
         bym: dict[tuple[int, int], float] = {}
         for t in txs:
-            if norm_cache[t.id] != key:
+            if key not in norm_cache[t.id]:
                 continue
             if p and t.person != p:
                 continue
@@ -105,7 +107,8 @@ def list_fixed_costs(
     by_key: dict[tuple[str, str], dict] = {}
     for t in txs:
         key = norm_cache[t.id]
-        if not key or key in fixed_keys:
+        # esconde candidato já coberto por algum custo fixo (match por contém)
+        if not key or any(fk in key for fk in fixed_keys):
             continue
         kk = (key, t.person)
         slot = by_key.setdefault(kk, {"months": set(), "total": 0.0, "ex": t.description or ""})
