@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import type { DashboardData, Category } from "../types";
+import type { DashboardData } from "../types";
 import api from "../api/client";
 import { usePersonStore } from "../store/person";
 import { useFilterStore } from "../store/filter";
-import FilterBar from "../components/Dashboard/FilterBar";
 import KpiCards from "../components/Dashboard/KpiCards";
 import CategoryPieChart from "../components/Dashboard/CategoryPieChart";
 import MonthlyBarChart from "../components/Dashboard/MonthlyBarChart";
@@ -25,11 +24,6 @@ export default function Dashboard() {
   const { month, year, categoryId, source, setMonth, setCategory } = useFilterStore();
   const [data, setData] = useState<DashboardData | null>(null);
   const [balanceHistory, setBalanceHistory] = useState<BalancePoint[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    api.get<Category[]>("/categories").then((r) => setCategories(r.data));
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams({ month: String(month), year: String(year), person });
@@ -48,7 +42,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5">
-      <FilterBar categories={categories} />
       <KpiCards
         totalExpense={data.total_expense}
         totalIncome={data.total_income}

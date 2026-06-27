@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
-import PersonFilter from "./PersonFilter";
+import GlobalFilterBar from "./GlobalFilterBar";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
@@ -37,12 +37,9 @@ export default function Sidebar() {
             </NavLink>
           ))}
         </nav>
-        <div className="border-t border-hairline pt-4 px-3">
-          <p className="px-2 text-[11px] uppercase tracking-wider text-muted mb-2">Visualizar</p>
-          <PersonFilter />
-        </div>
       </aside>
       <main className="flex-1 overflow-auto p-8">
+        <GlobalFilterBar />
         <Outlet />
       </main>
     </div>
