@@ -20,11 +20,11 @@ export default function DropZone({ onFiles }: Props) {
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
       onClick={() => ref.current?.click()}
-      className="border-2 border-dashed border-[#7c6af7] rounded-xl p-10 text-center cursor-pointer hover:bg-[#1a1a2e] transition-colors"
+      className="border-2 border-dashed border-hairline rounded-xl p-10 text-center cursor-pointer hover:border-accent hover:bg-accent-tint transition-colors"
     >
       <p className="text-4xl mb-2">📄</p>
-      <p className="text-gray-300">Arraste PDFs aqui ou clique para selecionar</p>
-      <p className="text-gray-500 text-sm mt-1">
+      <p className="text-ink">Arraste PDFs aqui ou clique para selecionar</p>
+      <p className="text-muted text-sm mt-1">
         Extrato conta corrente ou fatura do cartão Itaú · múltiplos arquivos permitidos
       </p>
       <input

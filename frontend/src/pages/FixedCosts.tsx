@@ -1,9 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import api from "../api/client";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { usePersonStore } from "../store/person";
+import Card from "../components/ui/Card";
+import KpiStat from "../components/ui/KpiStat";
+import SectionTitle from "../components/ui/SectionTitle";
+import { chart, tooltipStyle, axisTick } from "../lib/chartTheme";
+import { tableCls, theadCls, thCls, rowCls, tdCls } from "../components/ui/table";
 
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -12,18 +15,13 @@ interface Fixed {
   expected_amount: number | null; avg_amount: number; representative: number;
   this_month: number; paid_this_month: boolean; months_seen: number;
 }
-interface Candidate {
-  match_key: string; person: string; example: string; months_seen: number; avg_amount: number;
-}
+interface Candidate { match_key: string; person: string; example: string; months_seen: number; avg_amount: number; }
 interface Data {
-  monthly_total: number;
-  fixed: Fixed[];
-  candidates: Candidate[];
+  monthly_total: number; fixed: Fixed[]; candidates: Candidate[];
   by_month: Array<{ year: number; month: number; amount: number }>;
 }
 
-const brl = (n: number) =>
-  n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const brl = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function FixedCosts() {
   const { person } = usePersonStore();
@@ -42,9 +40,7 @@ export default function FixedCosts() {
     if (!label) return;
     const val = window.prompt(`Valor esperado por mês (opcional, média atual R$ ${brl(c.avg_amount)}):`, "");
     await api.post("/fixed-costs", {
-      label,
-      match_key: c.match_key,
-      person: c.person,
+      label, match_key: c.match_key, person: c.person,
       expected_amount: val ? Number(val.replace(",", ".")) : null,
     });
     load();
@@ -55,99 +51,94 @@ export default function FixedCosts() {
     load();
   }
 
-  if (loading) return <p className="text-gray-400">Carregando...</p>;
+  if (loading) return <p className="text-muted">Carregando...</p>;
   if (!data) return null;
 
-  const chart = data.by_month.map((m) => ({ name: `${MONTHS[m.month - 1]}/${String(m.year).slice(2)}`, amount: m.amount }));
+  const chartData = data.by_month.map((m) => ({ name: `${MONTHS[m.month - 1]}/${String(m.year).slice(2)}`, amount: m.amount }));
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">Custos Fixos — gasto recorrente mensal</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Custos Fixos — gasto recorrente mensal</h1>
 
-      <div className="flex gap-4">
-        <div className="bg-[#1e293b] rounded-xl p-4 flex-1">
-          <p className="text-xs text-[#94a3b8] mb-1">Total fixo por mês</p>
-          <p className="text-2xl font-bold text-[#38bdf8]">R$ {brl(data.monthly_total)}</p>
+      <Card className="!p-0">
+        <div className="grid grid-cols-2 divide-x divide-hairline">
+          <div className="p-5"><KpiStat label="Total fixo por mês" value={`R$ ${brl(data.monthly_total)}`} accent /></div>
+          <div className="p-5"><KpiStat label="Itens fixos" value={String(data.fixed.length)} /></div>
         </div>
-        <div className="bg-[#1e293b] rounded-xl p-4 flex-1">
-          <p className="text-xs text-[#94a3b8] mb-1">Itens fixos</p>
-          <p className="text-2xl font-bold text-[#f1f5f9]">{data.fixed.length}</p>
-        </div>
-      </div>
+      </Card>
 
       {data.by_month.length > 0 && (
-        <div className="bg-[#1e293b] rounded-xl p-4">
-          <h2 className="text-sm text-gray-400 mb-3">Custos fixos pagos por mês</h2>
+        <Card>
+          <SectionTitle>Custos fixos pagos por mês</SectionTitle>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="name" tick={{ fill: "#888", fontSize: 11 }} />
-              <YAxis tick={{ fill: "#888", fontSize: 11 }} />
-              <Tooltip contentStyle={{ background: "#1e293b", border: "1px solid #334155" }}
-                formatter={(v) => `R$ ${brl(Number(v))}`} />
-              <Bar dataKey="amount" fill="#38bdf8" radius={[3, 3, 0, 0]} />
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+              <XAxis dataKey="name" tick={axisTick} axisLine={{ stroke: chart.grid }} tickLine={false} />
+              <YAxis tick={axisTick} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: chart.grid, opacity: 0.4 }} contentStyle={tooltipStyle} formatter={(v) => `R$ ${brl(Number(v))}`} />
+              <Bar dataKey="amount" fill={chart.accent} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       )}
 
-      <div className="bg-[#1e293b] rounded-xl p-4">
-        <h2 className="text-sm text-gray-400 mb-3">Meus custos fixos</h2>
+      <Card>
+        <SectionTitle>Meus custos fixos</SectionTitle>
         {data.fixed.length === 0 ? (
-          <p className="text-gray-500 text-sm">Nada marcado ainda. Marque abaixo nas sugestões.</p>
+          <p className="text-muted text-sm">Nada marcado ainda. Marque abaixo nas sugestões.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className={tableCls}>
             <thead>
-              <tr className="text-gray-400 text-left border-b border-[#334155]">
-                <th className="py-2 pr-4">Conta</th>
-                <th className="py-2 pr-4 text-right">Valor/mês</th>
-                <th className="py-2 pr-4 text-center">Este mês</th>
-                <th className="py-2"></th>
+              <tr className={theadCls}>
+                <th className={thCls}>Conta</th>
+                <th className={`${thCls} text-right`}>Valor/mês</th>
+                <th className={`${thCls} text-center`}>Este mês</th>
+                <th className={thCls}></th>
               </tr>
             </thead>
             <tbody>
               {data.fixed.map((f) => (
-                <tr key={f.id} className="border-b border-[#222]">
-                  <td className="py-2 pr-4">
+                <tr key={f.id} className={rowCls}>
+                  <td className={tdCls}>
                     {f.label}
-                    {f.person && <span className="text-gray-500 text-xs ml-2 capitalize">{f.person}</span>}
+                    {f.person && <span className="text-muted text-xs ml-2 capitalize">{f.person}</span>}
                   </td>
-                  <td className="py-2 pr-4 text-right text-[#38bdf8] font-semibold">R$ {brl(f.representative)}</td>
-                  <td className="py-2 pr-4 text-center">
+                  <td className={`${tdCls} text-right text-accent font-semibold`}>R$ {brl(f.representative)}</td>
+                  <td className={`${tdCls} text-center`}>
                     {f.paid_this_month
-                      ? <span className="text-[#4ade80]">✓ R$ {brl(f.this_month)}</span>
-                      : <span className="text-[#fb923c]">pendente</span>}
+                      ? <span className="text-accent">✓ R$ {brl(f.this_month)}</span>
+                      : <span className="text-danger">pendente</span>}
                   </td>
-                  <td className="py-2 text-right">
-                    <button onClick={() => remove(f.id)} className="text-[#fb923c] hover:text-orange-300 text-xs">remover</button>
+                  <td className={`${tdCls} text-right`}>
+                    <button onClick={() => remove(f.id)} className="text-danger hover:opacity-70 text-xs">remover</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-      </div>
+      </Card>
 
-      <div className="bg-[#1e293b] rounded-xl p-4">
-        <h2 className="text-sm text-gray-400 mb-1">Sugestões (recorrentes — 3+ meses)</h2>
-        <p className="text-xs text-[#475569] mb-3">Marque o que é custo fixo de verdade.</p>
+      <Card>
+        <SectionTitle>Sugestões (recorrentes — 3+ meses)</SectionTitle>
+        <p className="text-xs text-muted -mt-2 mb-3">Marque o que é custo fixo de verdade.</p>
         {data.candidates.length === 0 ? (
-          <p className="text-gray-500 text-sm">Sem recorrentes novos.</p>
+          <p className="text-muted text-sm">Sem recorrentes novos.</p>
         ) : (
-          <div className="space-y-1">
+          <div>
             {data.candidates.map((c, i) => (
-              <div key={i} className="flex items-center justify-between text-sm border-b border-[#222] py-1.5">
+              <div key={i} className="flex items-center justify-between text-sm border-b border-hairline py-2 last:border-0">
                 <div className="flex-1 truncate">
-                  <span className="text-gray-200">{c.example}</span>
-                  <span className="text-gray-500 text-xs ml-2 capitalize">{c.person}</span>
-                  <span className="text-gray-600 text-xs ml-2">{c.months_seen} meses · ~R$ {brl(c.avg_amount)}/mês</span>
+                  <span className="text-ink">{c.example}</span>
+                  <span className="text-muted text-xs ml-2 capitalize">{c.person}</span>
+                  <span className="text-muted text-xs ml-2">{c.months_seen} meses · ~R$ {brl(c.avg_amount)}/mês</span>
                 </div>
-                <button onClick={() => mark(c)} className="text-[#38bdf8] hover:text-white text-xs ml-3 shrink-0">+ marcar</button>
+                <button onClick={() => mark(c)} className="text-accent hover:opacity-70 text-xs ml-3 shrink-0 font-medium">+ marcar</button>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

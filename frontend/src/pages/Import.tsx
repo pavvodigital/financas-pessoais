@@ -166,13 +166,13 @@ export default function Import() {
       <h1 className="text-xl font-bold">Importar PDF</h1>
 
       <div className="flex gap-4 items-center">
-        <span className="text-gray-400 text-sm">Pessoa:</span>
+        <span className="text-muted text-sm">Pessoa:</span>
         {(["diogo", "lis"] as const).map((p) => (
           <button
             key={p}
             onClick={() => setPerson(p)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
-              person === p ? "bg-sky-500 text-white" : "bg-[#1e293b] text-gray-400"
+              person === p ? "bg-accent text-white" : "bg-surface text-muted"
             }`}
           >
             {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -184,8 +184,8 @@ export default function Import() {
 
       {/* Queue status */}
       {queue.length > 0 && (
-        <div className="bg-[#1e293b] rounded-xl p-4 space-y-2">
-          <h3 className="text-sm text-gray-400 font-medium">
+        <div className="bg-surface border border-hairline rounded-xl p-4 space-y-2">
+          <h3 className="text-sm text-muted font-medium">
             Fila de importação {pending > 0 && `· ${pending} restante(s)`}
           </h3>
           {queue.map((item, i) => (
@@ -197,17 +197,17 @@ export default function Import() {
                 {item.status === "preview" && "👁"}
                 {item.status === "pending" && "⏸"}
               </span>
-              <span className="flex-1 truncate text-gray-300">{item.file.name}</span>
+              <span className="flex-1 truncate text-ink">{item.file.name}</span>
               {item.status === "done" && (
-                <span className="text-[#4ade80]">{item.saved} transações</span>
+                <span className="text-accent">{item.saved} transações</span>
               )}
               {item.duplicateOf && item.status === "preview" && (
-                <span className="text-yellow-400 text-xs">⚠️ duplicado</span>
+                <span className="text-danger text-xs">⚠️ duplicado</span>
               )}
               {item.status === "preview" && i !== activeIdx && (
                 <button
                   onClick={() => setActiveIdx(i)}
-                  className="text-xs text-[#38bdf8] underline"
+                  className="text-xs text-accent underline"
                 >
                   ver
                 </button>
@@ -219,21 +219,21 @@ export default function Import() {
 
       {/* Active preview */}
       {activeItem && activeItem.status === "preview" && activeItem.transactions && (
-        <div className="bg-[#1e293b] rounded-xl p-4 space-y-4">
+        <div className="bg-surface border border-hairline rounded-xl p-4 space-y-4">
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-semibold">
                 {activeItem.file.name} · {activeItem.transactions.length} transações
               </h3>
               {activeItem.duplicateOf && (
-                <p className="text-yellow-400 text-xs mt-0.5">
+                <p className="text-danger text-xs mt-0.5">
                   ⚠️ Este arquivo já foi importado anteriormente. Confirmar mesmo assim?
                 </p>
               )}
             </div>
             <button
               onClick={() => handleConfirm(activeIdx!)}
-              className="bg-sky-500 text-white px-6 py-2 rounded-lg font-semibold"
+              className="bg-accent text-white px-6 py-2 rounded-lg font-semibold"
             >
               Confirmar importação
             </button>
@@ -248,19 +248,19 @@ export default function Import() {
 
       {/* Imported files list */}
       {uploadedFiles.length > 0 && (
-        <div className="bg-[#1e293b] rounded-xl p-4 space-y-3">
-          <h3 className="text-sm text-gray-400 font-medium">Arquivos importados</h3>
+        <div className="bg-surface border border-hairline rounded-xl p-4 space-y-3">
+          <h3 className="text-sm text-muted font-medium">Arquivos importados</h3>
           {uploadedFiles.map((f) => (
             <div key={f.id} className="flex items-center justify-between text-sm">
               <div>
-                <span className="text-gray-300">{f.filename}</span>
-                <span className="text-gray-500 ml-2">
+                <span className="text-ink">{f.filename}</span>
+                <span className="text-muted ml-2">
                   {MONTHS[f.month - 1]}/{f.year} · {f.person} · {f.transaction_count} tx
                 </span>
               </div>
               <button
                 onClick={() => handleDeleteFile(f.id)}
-                className="text-[#fb923c] hover:text-orange-300 text-xs px-2 py-1 border border-[#fb923c] rounded"
+                className="text-danger hover:text-danger text-xs px-2 py-1 border border-danger rounded"
               >
                 Remover
               </button>

@@ -30,8 +30,8 @@ export default function SummaryCards({ totalExpense, totalIncome, balance, vsLas
               : "text-green-400",
         },
       ].map((card) => (
-        <div key={card.label} className="bg-[#1a1a2e] rounded-xl p-4">
-          <p className="text-gray-400 text-xs mb-1">{card.label}</p>
+        <div key={card.label} className="bg-paper rounded-xl p-4">
+          <p className="text-muted text-xs mb-1">{card.label}</p>
           <p className={`font-bold text-lg ${card.color}`}>{card.value}</p>
         </div>
       ))}

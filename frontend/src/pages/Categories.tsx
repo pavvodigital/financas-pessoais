@@ -88,7 +88,7 @@ export default function Categories() {
             setForm({ name: "", color: "#808080", icon: "❓", monthly_budget: "" });
             setEditing(true);
           }}
-          className="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm"
+          className="bg-accent text-white px-4 py-2 rounded-lg text-sm"
         >
           + Nova
         </button>
@@ -98,20 +98,20 @@ export default function Categories() {
           <div
             key={cat.id}
             onClick={() => { selectCat(cat); setEditing(false); }}
-            className={`bg-[#1e293b] rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-[#334155] ${
-              selected?.id === cat.id ? "ring-1 ring-[#38bdf8]" : ""
+            className={`bg-surface border border-hairline rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-paper ${
+              selected?.id === cat.id ? "ring-1 ring-accent" : ""
             }`}
           >
             <span className="text-2xl">{cat.icon}</span>
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{cat.name}</p>
-              <p className="text-xs text-gray-500">{cat.rule_count} regras</p>
+              <p className="text-xs text-muted">{cat.rule_count} regras</p>
             </div>
           </div>
         ))}
       </div>
       {selected && !editing && (
-        <div className="bg-[#1e293b] rounded-xl p-5 space-y-4">
+        <div className="bg-surface border border-hairline rounded-xl p-5 space-y-4">
           <div className="flex justify-between">
             <h2 className="font-bold">
               {selected.icon} {selected.name}
@@ -119,32 +119,32 @@ export default function Categories() {
             <div className="flex gap-2">
               <button
                 onClick={() => setEditing(true)}
-                className="text-xs text-[#38bdf8] border border-[#38bdf8] px-3 py-1 rounded"
+                className="text-xs text-accent border border-accent px-3 py-1 rounded"
               >
                 Editar
               </button>
               <button
                 onClick={() => deleteCategory(selected.id)}
-                className="text-xs text-[#fb923c] border border-[#fb923c] px-3 py-1 rounded"
+                className="text-xs text-danger border border-danger px-3 py-1 rounded"
               >
                 Remover
               </button>
             </div>
           </div>
           <div>
-            <p className="text-sm text-gray-400 mb-2">
+            <p className="text-sm text-muted mb-2">
               Regras de categorização automática
             </p>
             <div className="space-y-1 mb-3">
               {rules.map((rule) => (
                 <div
                   key={rule.id}
-                  className="flex justify-between items-center bg-[#0f172a] px-3 py-1.5 rounded"
+                  className="flex justify-between items-center bg-paper px-3 py-1.5 rounded"
                 >
                   <span className="text-sm font-mono">{rule.keyword}</span>
                   <button
                     onClick={() => deleteRule(rule.id)}
-                    className="text-gray-500 hover:text-[#fb923c] text-xs"
+                    className="text-muted hover:text-danger text-xs"
                   >
                     ✕
                   </button>
@@ -157,11 +157,11 @@ export default function Categories() {
                 onChange={(e) => setNewKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addRule()}
                 placeholder="Nova keyword (ex: SUPERMERCAD)"
-                className="flex-1 bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-sm"
+                className="flex-1 bg-paper border border-hairline rounded px-3 py-1.5 text-sm"
               />
               <button
                 onClick={addRule}
-                className="bg-sky-500 text-white px-4 py-1.5 rounded text-sm"
+                className="bg-accent text-white px-4 py-1.5 rounded text-sm"
               >
                 Adicionar
               </button>
@@ -170,7 +170,7 @@ export default function Categories() {
         </div>
       )}
       {editing && (
-        <div className="bg-[#1e293b] rounded-xl p-5 space-y-3">
+        <div className="bg-surface border border-hairline rounded-xl p-5 space-y-3">
           <h2 className="font-bold">{selected ? "Editar" : "Nova"} categoria</h2>
           {(
             [
@@ -181,25 +181,25 @@ export default function Categories() {
             ] as const
           ).map(({ label, key, type }) => (
             <div key={key}>
-              <label className="text-xs text-gray-400">{label}</label>
+              <label className="text-xs text-muted">{label}</label>
               <input
                 type={type}
                 value={form[key]}
                 onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-sm mt-1"
+                className="w-full bg-paper border border-hairline rounded px-3 py-1.5 text-sm mt-1"
               />
             </div>
           ))}
           <div className="flex gap-2">
             <button
               onClick={saveCategory}
-              className="bg-sky-500 text-white px-5 py-2 rounded-lg text-sm"
+              className="bg-accent text-white px-5 py-2 rounded-lg text-sm"
             >
               Salvar
             </button>
             <button
               onClick={() => setEditing(false)}
-              className="text-gray-400 px-5 py-2 text-sm"
+              className="text-muted px-5 py-2 text-sm"
             >
               Cancelar
             </button>

@@ -18,7 +18,7 @@ export default function PreviewTable({ transactions, categories, onChange }: Pro
     <div className="overflow-auto max-h-96">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-gray-400 text-left border-b border-[#333]">
+          <tr className="text-muted text-left border-b border-hairline">
             <th className="py-2 pr-4">Data</th>
             <th className="py-2 pr-4">Descrição</th>
             <th className="py-2 pr-4">Valor</th>
@@ -27,12 +27,12 @@ export default function PreviewTable({ transactions, categories, onChange }: Pro
         </thead>
         <tbody>
           {transactions.map((tx, i) => (
-            <tr key={i} className="border-b border-[#222] hover:bg-[#1a1a2e]">
-              <td className="py-2 pr-4 text-gray-400">{tx.date}</td>
+            <tr key={i} className="border-b border-hairline hover:bg-paper">
+              <td className="py-2 pr-4 text-muted">{tx.date}</td>
               <td className="py-2 pr-4">{tx.merchant_name || tx.description}</td>
               <td
                 className={`py-2 pr-4 ${
-                  tx.amount < 0 ? "text-red-400" : "text-green-400"
+                  tx.amount < 0 ? "text-danger" : "text-accent"
                 }`}
               >
                 R${" "}
@@ -44,7 +44,7 @@ export default function PreviewTable({ transactions, categories, onChange }: Pro
                 <select
                   value={tx.category_name || ""}
                   onChange={(e) => onChange(i, e.target.value)}
-                  className="bg-[#0f0f1a] border border-[#333] rounded px-2 py-1 text-sm text-gray-200"
+                  className="bg-paper border border-hairline rounded px-2 py-1 text-sm text-ink"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.name}>
