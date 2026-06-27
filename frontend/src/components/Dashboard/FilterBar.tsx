@@ -1,4 +1,5 @@
 import { useFilterStore } from "../../store/filter";
+import FilterPill from "../ui/FilterPill";
 
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -19,7 +20,6 @@ export default function FilterBar({ categories }: Props) {
     if (month === 1) setMonth(12, year - 1);
     else setMonth(month - 1, year);
   }
-
   function nextMonth() {
     const now = new Date();
     if (year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth() + 1)) return;
@@ -31,39 +31,26 @@ export default function FilterBar({ categories }: Props) {
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <div className="flex items-center gap-2 bg-[#1e293b] border border-[#334155] rounded-lg px-3 py-2">
-        <button onClick={prevMonth} className="text-[#94a3b8] hover:text-white text-lg leading-none">‹</button>
-        <span className="text-sm font-medium min-w-[80px] text-center text-[#f1f5f9]">
+      <div className="flex items-center gap-3 bg-surface border border-hairline rounded-lg px-3 py-1.5">
+        <button onClick={prevMonth} className="text-muted hover:text-ink text-lg leading-none">‹</button>
+        <span className="text-sm font-medium min-w-[84px] text-center text-ink">
           {MONTHS[month - 1]} {year}
         </span>
-        <button onClick={nextMonth} className="text-[#94a3b8] hover:text-white text-lg leading-none">›</button>
+        <button onClick={nextMonth} className="text-muted hover:text-ink text-lg leading-none">›</button>
       </div>
 
-      <div className="flex bg-[#1e293b] border border-[#334155] rounded-lg overflow-hidden">
+      <div className="flex gap-2">
         {SOURCE_OPTIONS.map((opt) => (
-          <button
-            key={String(opt.value)}
-            onClick={() => setSource(opt.value)}
-            className={`px-3 py-2 text-sm font-medium transition-colors ${
-              source === opt.value
-                ? "bg-[#3b82f6] text-white"
-                : "text-[#94a3b8] hover:text-white"
-            }`}
-          >
+          <FilterPill key={String(opt.value)} active={source === opt.value} onClick={() => setSource(opt.value)}>
             {opt.label}
-          </button>
+          </FilterPill>
         ))}
       </div>
 
       {activeCat && (
-        <div className="flex items-center gap-1 bg-[#1e3a5f] border border-[#38bdf8] rounded-full px-3 py-1 text-sm text-[#38bdf8]">
+        <div className="flex items-center gap-1 bg-accent-tint border border-accent rounded-full px-3 py-1 text-sm text-accent">
           <span>{activeCat.name}</span>
-          <button
-            onClick={() => setCategory(null)}
-            className="ml-1 text-[#38bdf8] hover:text-white leading-none"
-          >
-            ×
-          </button>
+          <button onClick={() => setCategory(null)} className="ml-1 hover:text-ink leading-none">×</button>
         </div>
       )}
     </div>

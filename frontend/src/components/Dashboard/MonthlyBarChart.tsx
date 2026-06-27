@@ -1,5 +1,8 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import type { MonthlyTotal } from "../../types";
+import Card from "../ui/Card";
+import SectionTitle from "../ui/SectionTitle";
+import { chart, tooltipStyle, axisTick } from "../../lib/chartTheme";
 
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -24,59 +27,30 @@ export default function MonthlyBarChart({ data, selectedMonth, selectedYear, onM
   }
 
   return (
-    <div className="bg-[#1e293b] rounded-xl p-4">
-      <h3 className="text-sm text-[#94a3b8] mb-3">Histórico mensal</h3>
+    <Card>
+      <SectionTitle>Fluxo mensal</SectionTitle>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={chartData} style={{ cursor: onMonthClick ? "pointer" : "default" }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-          <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 11 }} />
-          <YAxis tick={{ fill: "#475569", fontSize: 11 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+          <XAxis dataKey="name" tick={axisTick} axisLine={{ stroke: chart.grid }} tickLine={false} />
+          <YAxis tick={axisTick} axisLine={false} tickLine={false} />
           <Tooltip
-            contentStyle={{ background: "#1e293b", border: "1px solid #334155" }}
-            formatter={(v) =>
-              `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-            }
+            cursor={{ fill: chart.grid, opacity: 0.4 }}
+            contentStyle={tooltipStyle}
+            formatter={(v) => `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           />
-          <Bar
-            dataKey="Gastos"
-            radius={[3, 3, 0, 0]}
-            onClick={(d) => handleClick(d as unknown as { month: number; year: number })}
-          >
+          <Bar dataKey="Gastos" radius={[3, 3, 0, 0]} onClick={(d) => handleClick(d as unknown as { month: number; year: number })}>
             {chartData.map((entry, i) => (
-              <Cell
-                key={i}
-                fill={
-                  entry.month === selectedMonth && entry.year === selectedYear
-                    ? "#f97316"
-                    : "#fb923c99"
-                }
-                stroke={
-                  entry.month === selectedMonth && entry.year === selectedYear
-                    ? "#fed7aa"
-                    : "transparent"
-                }
-                strokeWidth={2}
-              />
+              <Cell key={i} fill={entry.month === selectedMonth && entry.year === selectedYear ? chart.barActive : chart.bar} />
             ))}
           </Bar>
-          <Bar
-            dataKey="Renda"
-            radius={[3, 3, 0, 0]}
-            onClick={(d) => handleClick(d as unknown as { month: number; year: number })}
-          >
+          <Bar dataKey="Renda" radius={[3, 3, 0, 0]} onClick={(d) => handleClick(d as unknown as { month: number; year: number })}>
             {chartData.map((entry, i) => (
-              <Cell
-                key={i}
-                fill={
-                  entry.month === selectedMonth && entry.year === selectedYear
-                    ? "#22c55e"
-                    : "#4ade8099"
-                }
-              />
+              <Cell key={i} fill={entry.month === selectedMonth && entry.year === selectedYear ? "#34d399" : "#d1d5db"} />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </Card>
   );
 }

@@ -8,6 +8,8 @@ import KpiCards from "../components/Dashboard/KpiCards";
 import CategoryPieChart from "../components/Dashboard/CategoryPieChart";
 import MonthlyBarChart from "../components/Dashboard/MonthlyBarChart";
 import BalanceHistoryChart from "../components/Dashboard/BalanceHistoryChart";
+import Card from "../components/ui/Card";
+import SectionTitle from "../components/ui/SectionTitle";
 
 interface BalancePoint {
   year: number;
@@ -42,7 +44,7 @@ export default function Dashboard() {
       .then((r) => setBalanceHistory(r.data));
   }, [person]);
 
-  if (!data) return <div className="text-[#475569] p-6">Carregando...</div>;
+  if (!data) return <div className="text-muted p-6">Carregando...</div>;
 
   return (
     <div className="space-y-5">
@@ -69,26 +71,26 @@ export default function Dashboard() {
         />
       </div>
       <BalanceHistoryChart data={balanceHistory} />
-      <div className="bg-[#1e293b] rounded-xl p-4">
-        <h3 className="text-sm text-[#94a3b8] mb-3">
+      <Card>
+        <SectionTitle>
           Últimas transações{categoryId ? " · filtrado por categoria" : ""}
-        </h3>
-        <div className="space-y-2">
+        </SectionTitle>
+        <div>
           {data.recent_transactions.map((t) => (
             <div
               key={t.id}
-              className="flex justify-between text-sm py-1 border-b border-[#334155] last:border-0"
+              className="flex justify-between text-sm py-2 border-b border-hairline last:border-0"
             >
-              <span className="text-[#94a3b8]">
-                {t.date} · {t.description}
+              <span className="text-muted">
+                {t.date} · <span className="text-ink">{t.description}</span>
               </span>
-              <span className={t.amount < 0 ? "text-[#fb923c]" : "text-[#4ade80]"}>
-                R$ {Math.abs(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              <span className={t.amount < 0 ? "text-ink" : "text-accent"}>
+                {t.amount < 0 ? "−" : "+"} R$ {Math.abs(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </span>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

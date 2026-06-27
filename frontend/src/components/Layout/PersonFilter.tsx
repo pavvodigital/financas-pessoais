@@ -8,15 +8,15 @@ export default function PersonFilter() {
     { value: "lis", label: "Lis" },
   ] as const;
   return (
-    <div className="flex gap-1 px-2">
+    <div className="flex gap-1">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => setPerson(o.value)}
-          className={`flex-1 py-1 rounded text-xs font-medium transition-colors ${
+          className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${
             person === o.value
-              ? "bg-[#7c6af7] text-white"
-              : "bg-[#252540] text-gray-400 hover:text-white"
+              ? "bg-accent text-white"
+              : "text-muted hover:text-ink hover:bg-paper"
           }`}
         >
           {o.label}
