@@ -12,9 +12,18 @@ function SourceBadge({ source }: { source: string }) {
   return <span className="text-xs px-2 py-0.5 rounded-full bg-accent-tint text-accent">Conta</span>;
 }
 
+function detectMethod(tx: Transaction): string {
+  if (tx.source === "credit_card") return "cartao";
+  const d = (tx.description || "").toUpperCase().trim();
+  if (d.startsWith("PIX")) return "pix";
+  if (d.includes("BOLETO")) return "boleto";
+  if (d.startsWith("DA ") || d.includes("DEBITO AUT")) return "debito";
+  return "outros";
+}
+
 export default function Transactions() {
   const { person } = usePersonStore();
-  const { month, year, source, categoryId, query } = useFilterStore();
+  const { month, year, source, categoryId, query, valueMin, valueMax, txType, method } = useFilterStore();
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,10 +45,16 @@ export default function Transactions() {
   }
 
   const q = query.trim().toLowerCase();
+  const min = valueMin ? parseFloat(valueMin.replace(",", ".")) : null;
+  const max = valueMax ? parseFloat(valueMax.replace(",", ".")) : null;
   const visible = txs
     .filter((tx) => !source || tx.source === source)
     .filter((tx) => !categoryId || tx.category_id === categoryId)
-    .filter((tx) => !q || (tx.merchant_name || tx.description || "").toLowerCase().includes(q));
+    .filter((tx) => !q || (tx.merchant_name || tx.description || "").toLowerCase().includes(q))
+    .filter((tx) => txType === "all" || (txType === "expense" ? tx.amount < 0 : tx.amount > 0))
+    .filter((tx) => method === "all" || detectMethod(tx) === method)
+    .filter((tx) => min == null || Math.abs(tx.amount) >= min)
+    .filter((tx) => max == null || Math.abs(tx.amount) <= max);
 
   return (
     <div className="space-y-5">
