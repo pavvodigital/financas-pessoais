@@ -9,6 +9,7 @@ import Trends from "./pages/Trends";
 import Installments from "./pages/Installments";
 import FixedCosts from "./pages/FixedCosts";
 import Layout from "./components/Layout/Sidebar";
+import { ToastProvider } from "./components/ui/toast";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("token");
@@ -18,6 +19,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <ToastProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -34,5 +36,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </ToastProvider>
   );
 }

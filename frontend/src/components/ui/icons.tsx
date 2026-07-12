@@ -24,6 +24,24 @@ export const Sliders = ({ className = "w-4 h-4" }: P) => (
     <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
   </svg>
 );
+export const Check = ({ className = "w-4 h-4" }: P) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke={base} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+);
+export const Clock = ({ className = "w-4 h-4" }: P) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke={base} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+);
+export const Eye = ({ className = "w-4 h-4" }: P) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke={base} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+);
+export const Pause = ({ className = "w-4 h-4" }: P) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke={base} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="10" y1="4" x2="10" y2="20" /><line x1="14" y1="4" x2="14" y2="20" /></svg>
+);
+export const AlertTriangle = ({ className = "w-4 h-4" }: P) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke={base} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+);
+export const Download = ({ className = "w-4 h-4" }: P) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke={base} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+);
 export const FileText = ({ className = "w-6 h-6" }: P) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke={base} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v5h5" /><path d="M9 13h6M9 17h6" />

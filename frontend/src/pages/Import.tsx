@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import api from "../api/client";
 import DropZone from "../components/Import/DropZone";
 import PreviewTable from "../components/Import/PreviewTable";
+import { useToast } from "../components/ui/toast";
+import { Check, X, Clock, Eye, Pause, AlertTriangle } from "../components/ui/icons";
 import type { Category } from "../types";
 
 interface TxPreview {
@@ -38,6 +40,7 @@ interface UploadedFileRecord {
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
 export default function Import() {
+  const toast = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [person, setPerson] = useState<"diogo" | "lis">("diogo");
   const [queue, setQueue] = useState<PendingFile[]>([]);
@@ -132,15 +135,21 @@ export default function Import() {
       category_id: tx.category_name ? catMap[tx.category_name] : null,
     }));
     const fname = item.file.name;
-    const { data } = await api.post("/upload/confirm", {
-      file_id_temp: item.fileIdTemp,
-      person,
-      filename: fname,
-      file_type: fname.toLowerCase().includes("fatura") ? "credit_card" : "statement",
-      transactions: txs,
-    });
-    updateQueue(fileIdx, { status: "done", saved: data.saved });
-    loadUploadedFiles();
+    try {
+      const { data } = await api.post("/upload/confirm", {
+        file_id_temp: item.fileIdTemp,
+        person,
+        filename: fname,
+        file_type: fname.toLowerCase().includes("fatura") ? "credit_card" : "statement",
+        transactions: txs,
+      });
+      updateQueue(fileIdx, { status: "done", saved: data.saved });
+      toast("success", `${data.saved} transações importadas de ${fname}`);
+      loadUploadedFiles();
+    } catch {
+      toast("error", `Erro ao confirmar ${fname}`);
+      return;
+    }
 
     // Auto-advance to next pending
     const nextPending = queue.findIndex((p, i) => i > fileIdx && p.status === "pending");
@@ -154,8 +163,13 @@ export default function Import() {
 
   async function handleDeleteFile(id: string) {
     if (!confirm("Remover arquivo e todas as transações importadas?")) return;
-    await api.delete(`/upload/files/${id}`);
-    setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
+    try {
+      await api.delete(`/upload/files/${id}`);
+      setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
+      toast("success", "Arquivo e transações removidos");
+    } catch {
+      toast("error", "Erro ao remover arquivo");
+    }
   }
 
   const pending = queue.filter((q) => q.status === "pending" || q.status === "processing").length;
@@ -191,18 +205,18 @@ export default function Import() {
           {queue.map((item, i) => (
             <div key={i} className="flex items-center gap-3 text-sm">
               <span className="w-4">
-                {item.status === "done" && "✅"}
-                {item.status === "error" && "❌"}
-                {item.status === "processing" && "⏳"}
-                {item.status === "preview" && "👁"}
-                {item.status === "pending" && "⏸"}
+                {item.status === "done" && <Check className="w-4 h-4 text-accent" />}
+                {item.status === "error" && <X className="w-4 h-4 text-danger" />}
+                {item.status === "processing" && <Clock className="w-4 h-4 text-muted animate-pulse" />}
+                {item.status === "preview" && <Eye className="w-4 h-4 text-accent" />}
+                {item.status === "pending" && <Pause className="w-4 h-4 text-muted" />}
               </span>
               <span className="flex-1 truncate text-ink">{item.file.name}</span>
               {item.status === "done" && (
                 <span className="text-accent">{item.saved} transações</span>
               )}
               {item.duplicateOf && item.status === "preview" && (
-                <span className="text-danger text-xs">⚠️ duplicado</span>
+                <span className="flex items-center gap-1 text-danger text-xs"><AlertTriangle className="w-3.5 h-3.5" /> duplicado</span>
               )}
               {item.status === "preview" && i !== activeIdx && (
                 <button
@@ -226,8 +240,8 @@ export default function Import() {
                 {activeItem.file.name} · {activeItem.transactions.length} transações
               </h3>
               {activeItem.duplicateOf && (
-                <p className="text-danger text-xs mt-0.5">
-                  ⚠️ Este arquivo já foi importado anteriormente. Confirmar mesmo assim?
+                <p className="flex items-center gap-1 text-danger text-xs mt-0.5">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Este arquivo já foi importado anteriormente. Confirmar mesmo assim?
                 </p>
               )}
             </div>
