@@ -46,7 +46,7 @@ def create_plan(body: PlanCreate, db: Session = Depends(get_db)):
 def update_plan(plan_id: str, body: PlanCreate, db: Session = Depends(get_db)):
     plan = db.query(SavingsPlan).filter(SavingsPlan.id == plan_id).first()
     if not plan:
-        raise HTTPException(404)
+        raise HTTPException(404, detail="Plano não encontrado")
     plan.name = body.name; plan.goal_amount = body.goal_amount; plan.target_date = body.target_date
     db.query(PlanCategoryBudget).filter(PlanCategoryBudget.plan_id == plan_id).delete()
     for b in body.category_budgets:
@@ -58,7 +58,7 @@ def update_plan(plan_id: str, body: PlanCreate, db: Session = Depends(get_db)):
 def plan_status(plan_id: str, db: Session = Depends(get_db)):
     plan = db.query(SavingsPlan).filter(SavingsPlan.id == plan_id).first()
     if not plan:
-        raise HTTPException(404)
+        raise HTTPException(404, detail="Plano não encontrado")
     now = datetime.now()
     budgets = db.query(PlanCategoryBudget).filter(PlanCategoryBudget.plan_id == plan_id).all()
     category_status = []

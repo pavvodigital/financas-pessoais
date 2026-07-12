@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.auth import verify_token
 from app.services.pdf_parser import parse_credit_card_pdf, parse_statement_pdf
-from app.services.categorizer import categorize_transaction
+from app.services.categorizer import categorize_transaction, load_categorization_context
 from app.schemas.transaction import (
     UploadPreviewResponse,
     TransactionPreview,
@@ -22,7 +22,18 @@ router = APIRouter(
     dependencies=[Depends(verify_token)],
 )
 
+# Previews aguardando confirmação. TTL evita acúmulo indefinido quando o
+# usuário faz upload e nunca confirma (antes crescia até reiniciar o container).
 _temp_store: dict[str, dict] = {}
+_TEMP_TTL_SECONDS = 3600
+
+
+def _purge_expired_previews() -> None:
+    import time
+    now = time.monotonic()
+    expired = [k for k, v in _temp_store.items() if now - v.get("created_at", now) > _TEMP_TTL_SECONDS]
+    for k in expired:
+        _temp_store.pop(k, None)
 
 
 def _detect_type(filename: str) -> str:
@@ -116,8 +127,9 @@ async def upload_pdf(
         os.unlink(tmp_path)
 
     previews = []
+    rules, categories = load_categorization_context(db)
     for tx in raw_txs:
-        cat = categorize_transaction(tx, db)
+        cat = categorize_transaction(tx, db, rules=rules, categories=categories)
         previews.append(
             TransactionPreview(
                 date=tx["date"],
@@ -171,6 +183,8 @@ async def upload_pdf(
         _now = __import__("datetime").datetime.now()
         billing_month, billing_year = _now.month, _now.year
 
+    import time
+    _purge_expired_previews()
     temp_id = str(uuid.uuid4())
     _temp_store[temp_id] = {
         "previews": previews,
@@ -179,6 +193,7 @@ async def upload_pdf(
         "file_hash": file_hash,
         "billing_month": billing_month,
         "billing_year": billing_year,
+        "created_at": time.monotonic(),
     }
     return UploadPreviewResponse(
         file_id_temp=temp_id,

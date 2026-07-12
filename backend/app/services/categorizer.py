@@ -1,21 +1,36 @@
 from sqlalchemy.orm import Session
 from app.models import Category, CategoryRule
 
-def categorize_transaction(tx: dict, db: Session) -> Category | None:
-    # 1. Try Itaú category label
-    if tx.get("itau_category"):
-        cat = db.query(Category).filter(Category.name == tx["itau_category"]).first()
-        if cat:
-            return cat
 
-    # 2. Keyword matching — highest priority first
-    desc = tx.get("description", "").upper()
+def load_categorization_context(db: Session) -> tuple[list[CategoryRule], dict[str, Category]]:
+    """Carrega regras + categorias uma vez. Um preview de fatura tem 100+
+    transações; sem isso cada uma dispararia 2-3 queries próprias."""
     rules = (
         db.query(CategoryRule)
         .join(Category)
         .order_by(CategoryRule.priority.desc())
         .all()
     )
+    categories = {c.name: c for c in db.query(Category).all()}
+    return rules, categories
+
+
+def categorize_transaction(
+    tx: dict,
+    db: Session,
+    rules: list[CategoryRule] | None = None,
+    categories: dict[str, Category] | None = None,
+) -> Category | None:
+    if rules is None or categories is None:
+        rules, categories = load_categorization_context(db)
+
+    # 1. Try Itaú category label
+    itau_cat = tx.get("itau_category")
+    if itau_cat and itau_cat in categories:
+        return categories[itau_cat]
+
+    # 2. Keyword matching — highest priority first
+    desc = tx.get("description", "").upper()
     for rule in rules:
         kw = rule.keyword.upper()
         matched = False
@@ -29,4 +44,4 @@ def categorize_transaction(tx: dict, db: Session) -> Category | None:
             return rule.category
 
     # 3. Fallback to Outros
-    return db.query(Category).filter(Category.name == "Outros").first()
+    return categories.get("Outros")

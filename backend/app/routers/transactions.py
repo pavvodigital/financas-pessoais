@@ -74,7 +74,7 @@ def create_transaction(body: TransactionCreate, db: Session = Depends(get_db)):
 def update_transaction(tx_id: str, body: TransactionUpdate, db: Session = Depends(get_db)):
     tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
     if not tx:
-        raise HTTPException(404)
+        raise HTTPException(404, detail="Transação não encontrada")
     if body.category_id is not None:
         tx.category_id = body.category_id
         tx.manually_categorized = True

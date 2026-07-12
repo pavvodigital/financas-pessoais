@@ -12,3 +12,5 @@ node_modules/
 frontend/dist/
 *.db
 .superpowers/
+graphify-out/
+*.pdf

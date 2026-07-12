@@ -6,6 +6,7 @@ from app.database import get_db
 from app.auth import verify_token
 from app.models import Transaction, Category
 from app.schemas.dashboard import DashboardResponse, CategoryTotal, MonthlyTotal
+from app.services.aggregates import monthly_totals
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(verify_token)])
 
@@ -51,24 +52,14 @@ def get_dashboard(
         return cc_expense + non_cc_expense, cc_income + non_cc_income
 
     total_expense, total_income = _net_totals(txs)
-    # Gross CC charges used as denominator for pie chart percentages
-    gross_charge_total = abs(sum(float(t.amount) for t in txs if t.amount < 0))
 
-    # Last month comparison
+    # Last month comparison (agregado em SQL — sem carregar o mês inteiro)
     if month == 1:
         prev_month, prev_year = 12, year - 1
     else:
         prev_month, prev_year = month - 1, year
-    prev_q = db.query(Transaction).filter(
-        func.extract("month", Transaction.date) == prev_month,
-        func.extract("year", Transaction.date) == prev_year,
-    )
-    if person and person != "ambos":
-        prev_q = prev_q.filter(Transaction.person == person)
-    if source:
-        prev_q = prev_q.filter(Transaction.source == source)
-    prev_txs = prev_q.all()
-    prev_expense, _ = _net_totals(prev_txs)
+    prev = monthly_totals(db, [(prev_year, prev_month)], person, source)
+    prev_expense = prev[(prev_year, prev_month)]["expense"]
     vs_last = ((total_expense - prev_expense) / prev_expense * 100) if prev_expense else None
 
     # By category (excluding transfers — keeps pie chart focused on spending)
@@ -77,6 +68,9 @@ def get_dashboard(
     for tx in non_transfer:
         if tx.amount < 0 and tx.category_id:
             cat_totals[tx.category_id] = cat_totals.get(tx.category_id, 0) + abs(float(tx.amount))
+    # Denominador = mesmo universo das fatias (gastos sem transferências),
+    # senão os percentuais do pie não fecham 100%.
+    gross_charge_total = abs(sum(float(t.amount) for t in non_transfer if t.amount < 0))
     by_category = []
     for cat_id, total in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True):
         cat = db.query(Category).filter(Category.id == cat_id).first()
@@ -89,29 +83,24 @@ def get_dashboard(
                 percentage=round(total / gross_charge_total * 100, 1) if gross_charge_total else 0,
             ))
 
-    # Monthly history (last 6 months) — apply same person/source filters
-    history = []
+    # Monthly history (last 6 months) — uma query agregada, mesmos filtros
+    hist_months = []
     for i in range(5, -1, -1):
         m = month - i
         y = year
         while m <= 0:
             m += 12
             y -= 1
-        hq = db.query(Transaction).filter(
-            func.extract("month", Transaction.date) == m,
-            func.extract("year", Transaction.date) == y,
-        )
-        if person and person != "ambos":
-            hq = hq.filter(Transaction.person == person)
-        if source:
-            hq = hq.filter(Transaction.source == source)
-        ht = hq.all()
-        exp_h, inc_h = _net_totals(ht)
-        history.append(MonthlyTotal(
+        hist_months.append((y, m))
+    totals = monthly_totals(db, hist_months, person, source)
+    history = [
+        MonthlyTotal(
             year=y, month=m,
-            total_expense=round(exp_h, 2),
-            total_income=round(inc_h, 2),
-        ))
+            total_expense=totals[(y, m)]["expense"],
+            total_income=totals[(y, m)]["income"],
+        )
+        for (y, m) in hist_months
+    ]
 
     recent_q = sorted(txs, key=lambda x: x.date, reverse=True)
     if category_id:
@@ -148,19 +137,12 @@ def balance_history(person: str = Query(default="ambos"), db: Session = Depends(
             y -= 1
         months.append((y, m))
 
+    totals = monthly_totals(db, months, person)
     cumulative = 0.0
     result = []
     for y, m in months:
-        q = db.query(Transaction).filter(
-            func.extract("month", Transaction.date) == m,
-            func.extract("year", Transaction.date) == y,
-        )
-        if person != "ambos":
-            q = q.filter(Transaction.person == person)
-        txs = q.all()
-        cc_net = sum(float(t.amount) for t in txs if t.source == "credit_card")
-        expense = round(max(0.0, -cc_net) + abs(sum(float(t.amount) for t in txs if t.amount < 0 and t.source != "credit_card")), 2)
-        income = round(max(0.0, cc_net) + sum(float(t.amount) for t in txs if t.amount > 0 and t.source != "credit_card"), 2)
+        expense = totals[(y, m)]["expense"]
+        income = totals[(y, m)]["income"]
         balance = round(income - expense, 2)
         cumulative = round(cumulative + balance, 2)
         result.append({

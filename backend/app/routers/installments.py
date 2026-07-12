@@ -7,12 +7,12 @@ agrupamos por compra e usamos a parcela MAIS avançada já vista
 """
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
 from app.auth import verify_token
 from app.models import Transaction
+from app.services.aggregates import monthly_totals
 
 router = APIRouter(prefix="/api/installments", tags=["installments"], dependencies=[Depends(verify_token)])
 
@@ -90,21 +90,6 @@ def _installment_rows(db: Session, person: Optional[str]) -> list[Transaction]:
     return q.all()
 
 
-def _month_expense(db: Session, year: int, month: int, person: Optional[str]) -> float:
-    """Gasto realizado no mês: cartão como net da fatura + débitos da conta."""
-    q = db.query(Transaction).filter(
-        func.extract("year", Transaction.date) == year,
-        func.extract("month", Transaction.date) == month,
-    )
-    if person and person != "ambos":
-        q = q.filter(Transaction.person == person)
-    txs = q.all()
-    cc_net = sum(float(t.amount) for t in txs if t.source == "credit_card")
-    cc_expense = max(0.0, -cc_net)
-    non_cc_expense = abs(sum(float(t.amount) for t in txs if t.amount < 0 and t.source != "credit_card"))
-    return round(cc_expense + non_cc_expense, 2)
-
-
 @router.get("")
 def list_installments(
     person: Optional[str] = Query(None),
@@ -143,15 +128,17 @@ def monthly_outlook(
     sched = _schedule(_installment_rows(db, person))
     committed = sched["by_month"]  # {(y,m): {amount,count}}
 
-    months = []
-    # passado + mês atual: realizado
-    for i in range(past, -1, -1):
-        y, m = _add_months(now.year, now.month, -i)
-        months.append({
+    # passado + mês atual: realizado (uma query agregada pro range todo)
+    past_months = [_add_months(now.year, now.month, -i) for i in range(past, -1, -1)]
+    realized = monthly_totals(db, past_months, person)
+    months = [
+        {
             "year": y, "month": m, "is_future": False,
-            "realized": _month_expense(db, y, m, person),
+            "realized": realized[(y, m)]["expense"],
             "committed": None,
-        })
+        }
+        for (y, m) in past_months
+    ]
     # futuro: parcelas comprometidas
     for j in range(1, future + 1):
         y, m = _add_months(now.year, now.month, j)
