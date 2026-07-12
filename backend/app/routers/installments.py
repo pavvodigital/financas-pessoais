@@ -96,15 +96,26 @@ def list_installments(
     db: Session = Depends(get_db),
 ):
     sched = _schedule(_installment_rows(db, person))
+    by_month = sched["by_month"]
     by_month_list = [
         {"year": y, "month": m, "amount": round(v["amount"], 2), "count": v["count"]}
-        for (y, m), v in sorted(sched["by_month"].items())
+        for (y, m), v in sorted(by_month.items())
     ]
-    # "Próximo mês" = primeiro mês do cronograma agregado (mês-calendário real).
-    next_month_load = by_month_list[0]["amount"] if by_month_list else 0.0
+    # "Próximo mês" = próximo mês-calendário a partir de hoje (não o primeiro do
+    # cronograma, que pode estar no passado se faltar importar fatura recente).
+    now = datetime.now()
+    ny, nm = _add_months(now.year, now.month, 1)
+    next_month_load = round(by_month.get((ny, nm), {}).get("amount", 0.0), 2)
+    # Total a vencer = só o que ainda está por vir (mês atual em diante); parcelas
+    # com vencimento no passado ou já foram pagas ou faltam faturas recentes.
+    remaining_future = round(
+        sum(v["amount"] for (y, m), v in by_month.items() if (y, m) >= (now.year, now.month)),
+        2,
+    )
     return {
         "total_remaining": sched["total_remaining"],
-        "next_month_load": round(next_month_load, 2),
+        "remaining_future": remaining_future,
+        "next_month_load": next_month_load,
         "active_count": len(sched["items"]),
         "items": sched["items"],
         "by_month": by_month_list,

@@ -51,7 +51,13 @@ def test_remaining_dedupes_and_excludes_paid(client):
     assert data["total_remaining"] == 900.0
     assert data["items"][0]["merchant_name"] == "AMAZON"
     assert data["items"][0]["remaining_count"] == 9
-    assert data["next_month_load"] == 100.0
+    # next_month_load = próximo mês-calendário a partir de hoje. AMAZON (base
+    # Mar/26) tem parcelas Abr–Dez/26; vale 100 se o próximo mês cai nesse range.
+    from datetime import datetime
+    from app.routers.installments import _add_months
+    ny, nm = _add_months(datetime.now().year, datetime.now().month, 1)
+    expected = 100.0 if (2026, 4) <= (ny, nm) <= (2026, 12) else 0.0
+    assert data["next_month_load"] == expected
 
 
 def test_by_month_layout(client):
