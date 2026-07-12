@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.database import get_db
 from app.auth import verify_token
-from app.services.pdf_parser import parse_credit_card_pdf, parse_statement_pdf
+from app.services.pdf_parser import parse_credit_card_pdf, parse_statement_pdf, detect_person
 from app.services.categorizer import categorize_transaction, load_categorization_context
 from app.schemas.transaction import (
     UploadPreviewResponse,
@@ -123,6 +123,7 @@ async def upload_pdf(
             raw_txs = parse_credit_card_pdf(tmp_path)
         else:
             raw_txs = parse_statement_pdf(tmp_path)
+        detected_person = detect_person(tmp_path)
     finally:
         os.unlink(tmp_path)
 
@@ -193,12 +194,14 @@ async def upload_pdf(
         "file_hash": file_hash,
         "billing_month": billing_month,
         "billing_year": billing_year,
+        "detected_person": detected_person,
         "created_at": time.monotonic(),
     }
     return UploadPreviewResponse(
         file_id_temp=temp_id,
         transactions=previews,
         duplicate_of=duplicate_of,
+        detected_person=detected_person,
     )
 
 
@@ -213,11 +216,14 @@ def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
 
     month = stored.get("billing_month") or datetime.now().month
     year = stored.get("billing_year") or datetime.now().year
+    # Pessoa detectada no PDF tem prioridade sobre o seletor manual — evita que
+    # um zip misto (Diogo + Lis) caia tudo na pessoa selecionada na tela.
+    person = stored.get("detected_person") or req.person
 
     uploaded = UploadedFile(
         filename=req.filename,
         file_type=req.file_type,
-        person=req.person,
+        person=person,
         month=month,
         year=year,
         transaction_count=len(req.transactions),
@@ -234,7 +240,7 @@ def confirm_upload(req: UploadConfirmRequest, db: Session = Depends(get_db)):
             amount=tx.amount,
             type="expense" if tx.amount < 0 else "income",
             category_id=tx.category_id,
-            person=req.person,
+            person=person,
             source=tx.source,
             file_id=uploaded.id,
             raw_text=tx.raw_text,

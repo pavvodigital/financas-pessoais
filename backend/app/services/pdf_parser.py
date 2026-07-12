@@ -297,6 +297,38 @@ def parse_statement_pdf(path: str) -> list[dict[str, Any]]:
     return transactions
 
 
+# ---------------------------------------------------------------------------
+# Detecção de titular (pessoa) pelo nome no cabeçalho do documento
+# ---------------------------------------------------------------------------
+# Cada pessoa é identificada por marcadores no nome do titular. O nome fica
+# no topo da 1ª página (cabeçalho); ler por posição evita confundir com nomes
+# que aparecem em lançamentos (ex: "PIX TRANSF LIS LAURA" no extrato do Diogo).
+PERSON_MARKERS: list[tuple[str, tuple[str, ...]]] = [
+    ("diogo", ("DIOGO",)),
+    ("lis", ("LIS", "LAURA", "PUPO")),
+]
+
+
+def detect_person(path: str) -> str | None:
+    """Lê o titular no cabeçalho (topo ~22% da 1ª página) e mapeia pra pessoa.
+
+    Retorna 'diogo'/'lis' ou None se não reconhecer (aí o upload usa a pessoa
+    escolhida manualmente como fallback).
+    """
+    try:
+        with pdfplumber.open(path) as pdf:
+            page = pdf.pages[0]
+            cutoff = page.height * 0.22
+            words = [w for w in page.extract_words() if w["top"] < cutoff]
+            header = " ".join(w["text"] for w in words).upper()
+    except Exception:
+        return None
+    for person, markers in PERSON_MARKERS:
+        if any(mk in header for mk in markers):
+            return person
+    return None
+
+
 def parse_credit_card_pdf(path: str) -> list[dict[str, Any]]:
     """Parse an Itaú credit card statement PDF and return a list of transactions.
 

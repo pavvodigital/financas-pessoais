@@ -33,6 +33,7 @@ class UploadPreviewResponse(BaseModel):
     file_id_temp: str
     transactions: list[TransactionPreview]
     duplicate_of: Optional[str] = None
+    detected_person: Optional[str] = None
 
 
 class UploadConfirmRequest(BaseModel):
