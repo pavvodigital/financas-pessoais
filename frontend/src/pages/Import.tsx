@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import JSZip from "jszip";
 import api from "../api/client";
 import DropZone from "../components/Import/DropZone";
 import PreviewTable from "../components/Import/PreviewTable";
@@ -104,7 +105,32 @@ export default function Import() {
     [person]
   );
 
-  async function handleFiles(files: File[]) {
+  async function expandZips(files: File[]): Promise<File[]> {
+    const out: File[] = [];
+    for (const f of files) {
+      const isZip = f.name.toLowerCase().endsWith(".zip") || f.type.includes("zip");
+      if (!isZip) { out.push(f); continue; }
+      try {
+        const zip = await JSZip.loadAsync(f);
+        const pdfs = Object.values(zip.files).filter(
+          (e) => !e.dir && e.name.toLowerCase().endsWith(".pdf") && !e.name.split("/").pop()!.startsWith(".")
+        );
+        if (pdfs.length === 0) { toast("error", `${f.name}: nenhum PDF dentro do zip`); continue; }
+        for (const entry of pdfs) {
+          const blob = await entry.async("blob");
+          out.push(new File([blob], entry.name.split("/").pop()!, { type: "application/pdf" }));
+        }
+        toast("success", `${f.name}: ${pdfs.length} PDF(s) extraído(s)`);
+      } catch {
+        toast("error", `Erro ao abrir ${f.name}`);
+      }
+    }
+    return out;
+  }
+
+  async function handleFiles(rawFiles: File[]) {
+    const files = await expandZips(rawFiles);
+    if (files.length === 0) return;
     const newItems: PendingFile[] = files.map((f) => ({ file: f, status: "pending" }));
     const next = [...queue, ...newItems];
     setQueue(next);
